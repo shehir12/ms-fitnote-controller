@@ -1,0 +1,312 @@
+package fitnotecontroller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
+import fitnotecontroller.application.FitnoteControllerConfiguration;
+import fitnotecontroller.domain.BarcodeContents;
+import fitnotecontroller.domain.ExpectedFitnoteFormat;
+import fitnotecontroller.domain.ImagePayload;
+import fitnotecontroller.domain.Views;
+import fitnotecontroller.exception.ImageCompressException;
+import fitnotecontroller.exception.ImagePayloadException;
+import fitnotecontroller.exception.ImageTransformException;
+import fitnotecontroller.utils.ImageCompressor;
+import fitnotecontroller.utils.JsonValidator;
+import fitnotecontroller.utils.MemoryChecker;
+import fitnotecontroller.utils.OcrChecker;
+import fitnotecontroller.utils.PdfImageExtractor;
+import gov.dwp.utilities.logging.DwpEncodedLogger;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.http.HttpStatus;
+import org.apache.log4j.Logger;
+
+import javax.imageio.ImageIO;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+@Path("/")
+public class FitnoteSubmitResource {
+    private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteSubmitResource.class.getName());
+    private static final String ERROR_MSG = "Unable to process request";
+    private FitnoteControllerConfiguration controllerConfiguration;
+    private ImageCompressor imageCompressor;
+    private ImageStorage imageStorage;
+    private JsonValidator validator;
+    private OcrChecker ocrChecker;
+
+    public FitnoteSubmitResource(FitnoteControllerConfiguration controllerConfiguration, ImageStorage imageStorage) {
+        this(controllerConfiguration, new JsonValidator(), new OcrChecker(controllerConfiguration), imageStorage, new ImageCompressor(controllerConfiguration));
+    }
+
+    public FitnoteSubmitResource(FitnoteControllerConfiguration controllerConfiguration, JsonValidator validator, OcrChecker ocrChecker, ImageStorage imageStorage, ImageCompressor imageCompressor) {
+        this.controllerConfiguration = controllerConfiguration;
+        this.validator = validator;
+        this.ocrChecker = ocrChecker;
+        this.imageStorage = imageStorage;
+        this.imageCompressor = imageCompressor;
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/imagestatus")
+    public Response checkFitnote(@QueryParam("sessionId") Optional<String> sessionId) throws ImagePayloadException {
+        Response response;
+        if (sessionId.isPresent()) {
+            ImagePayload payload = imageStorage.getPayload(sessionId.get());
+            response = Response.status(Response.Status.OK).entity(createStatusOnlyResponseFrom(payload.getFitnoteCheckStatus(), payload.getBarcodeCheckStatus())).build();
+        } else {
+            response = Response.status(Response.Status.BAD_REQUEST).build();
+
+        }
+        return response;
+    }
+
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/photo")
+    public Response submitFitnote(String json) {
+        ImagePayload incomingPayload;
+        Response response;
+        try {
+
+            if (MemoryChecker.hasEnoughMemoryForRequest(Runtime.getRuntime(), controllerConfiguration.getEstimatedRequestMemoryMb())) {
+                incomingPayload = validator.validateAndTranslateSubmission(json);
+                ImagePayload storedPayload = imageStorage.getPayload(incomingPayload.getSessionId());
+                storedPayload.setFitnoteCheckStatus(incomingPayload.getFitnoteCheckStatus());
+                storedPayload.setImage(incomingPayload.getImage());
+
+                response = createResponseOf(HttpStatus.SC_ACCEPTED, createSessionOnlyResponseFrom(incomingPayload));
+                LOG.debug("Json Validated correctly");
+                checkAsynchronously(storedPayload);
+
+            } else {
+                response = createResponseOf(HttpStatus.SC_SERVICE_UNAVAILABLE, ERROR_MSG);
+            }
+
+        } catch (ImagePayloadException e) {
+            response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.debug(ERROR_MSG, e);
+        } catch (IOException e) {
+            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.debug(ERROR_MSG, e);
+        }
+        LOG.debug(String.format("Completed /photo, send back status %d", response.getStatusInfo().getStatusCode()));
+        return response;
+    }
+
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/qrcode")
+    public Response submitBarcode(String json) {
+        ImagePayload incomingPayload;
+        Response response;
+        try {
+
+            if (MemoryChecker.hasEnoughMemoryForRequest(Runtime.getRuntime(), controllerConfiguration.getEstimatedRequestMemoryMb())) {
+                incomingPayload = validator.validateAndTranslateBarcodeSubmission(json);
+                ImagePayload storedPayload = imageStorage.getPayload(incomingPayload.getSessionId());
+                storedPayload.setBarcodeCheckStatus(incomingPayload.getBarcodeCheckStatus());
+                storedPayload.setBarcodeImage(incomingPayload.getBarcodeImage());
+
+                response = createResponseOf(HttpStatus.SC_ACCEPTED, createSessionOnlyResponseFrom(incomingPayload));
+                LOG.debug("Json validated correctly");
+                checkBarcodeAsynchronously(storedPayload);
+
+            } else {
+                response = createResponseOf(HttpStatus.SC_SERVICE_UNAVAILABLE, ERROR_MSG);
+            }
+
+        } catch (ImagePayloadException e) {
+            response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.debug(ERROR_MSG, e);
+        } catch (JsonProcessingException e) {
+            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.debug(ERROR_MSG, e);
+        }
+        return response;
+    }
+
+    private void checkBarcodeAsynchronously(ImagePayload payload) {
+        payload.setBarcodeCheckStatus(ImagePayload.Status.CHECKING);
+        new Thread(() -> {
+            try {
+                if (payload.getBarcodeImage() == null) {
+                    throw new ImagePayloadException("No Barcode Image found");
+                }
+
+                decodeBarcodeContents(payload);
+
+            } catch (ImagePayloadException | IOException | OutOfMemoryError e) {
+                payload.setBarcodeCheckStatus(ImagePayload.Status.FAILED_ERROR);
+                LOG.error(e.getMessage());
+                LOG.debug(e);
+            }
+
+        }).start();
+    }
+
+    private void decodeBarcodeContents(ImagePayload payload) throws IOException {
+        LOG.info("Attempting to decode Barcode Code");
+        BarcodeContents barcodeContents = new BarcodeAnalyser(payload.getBarcodeImage()).decodeBarcodeContents();
+
+        if (barcodeContents == null) {
+            LOG.info("Unable to decode Barcode code");
+            payload.setBarcodeCheckStatus(ImagePayload.Status.FAILED_IMG_BARCODE);
+        } else {
+            LOG.info("Barcode code successfully decoded");
+            payload.setBarcodeCheckStatus(ImagePayload.Status.PASS_IMG_BARCODE);
+            payload.setBarcodeCheckStatus(ImagePayload.Status.SUCCEEDED);
+        }
+    }
+
+    private void checkAsynchronously(ImagePayload payload) {
+        payload.setFitnoteCheckStatus(ImagePayload.Status.CHECKING);
+        new Thread(() -> {
+            try {
+                if (!validateAndOcrImageFromInputTypes(payload)) {
+                    return;
+                }
+
+                byte[] compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))), controllerConfiguration.getTargetImageSizeKB(), controllerConfiguration.isGreyScale());
+                validateCompressedImage(compressedImage, payload, false);
+
+            } catch (ImagePayloadException | IOException | ImageCompressException | OutOfMemoryError e) {
+                payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_ERROR);
+                LOG.warn(e.getMessage());
+                LOG.debug(e);
+            }
+        }).start();
+    }
+
+    private String createSessionOnlyResponseFrom(ImagePayload payload) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
+        return mapper.writerWithView(Views.SessionOnly.class).writeValueAsString(payload);
+    }
+
+    private String createStatusOnlyResponseFrom(ImagePayload.Status fitnoteStatus, ImagePayload.Status barcodeStatus) {
+        return String.format("{\"fitnoteStatus\":\"%s\", \"barcodeStatus\" : \"%s\"}", fitnoteStatus, barcodeStatus);
+    }
+
+    private Response createResponseOf(int status, String message) {
+        return Response.status(status).entity(message).build();
+    }
+
+    private boolean validateAndOcrImageFromInputTypes(ImagePayload payload) throws IOException, ImagePayloadException, ImageCompressException {
+        boolean validationStatus = false;
+        try {
+            if (validatePayloadImageJpg(payload)) {
+                validationStatus = ocrImage(payload);
+            }
+
+        } catch (ImageTransformException e) {
+            LOG.debug(e);
+
+            byte[] pdfImage = PdfImageExtractor.extractImage(Base64.decodeBase64(payload.getImage()), controllerConfiguration.getPdfScanDPI());
+            if (pdfImage != null) {
+                if (validateLandscapeImage(payload, ImageIO.read(new ByteArrayInputStream(pdfImage)))) {
+                    payload.setImage(Base64.encodeBase64String(pdfImage));
+                    validationStatus = ocrImage(payload);
+                }
+
+            } else {
+                throw new ImagePayloadException("The encoded string could not be transformed to a BufferedImage");
+            }
+        }
+
+        return validationStatus;
+    }
+
+    private boolean validatePayloadImageJpg(ImagePayload payload) throws IOException, ImagePayloadException, ImageTransformException {
+        if (payload.getImage() == null) {
+            throw new ImagePayloadException("The encoded string is null.  Cannot be transformed to an image");
+        }
+
+        BufferedImage imageBuf = ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage())));
+
+        if (imageBuf == null) {
+            throw new ImageTransformException("The encoded string could not be transformed to a BufferedImage");
+        }
+
+        return validateLandscapeImage(payload, imageBuf);
+    }
+
+    private boolean validateLandscapeImage(ImagePayload payload, BufferedImage imageBuf) {
+        boolean returnValue = false;
+        if (controllerConfiguration.isLandscapeImageEnforced()) {
+            if (imageBuf.getHeight() > imageBuf.getWidth()) {
+                LOG.error(String.format("Image is not landscape (H:%d, W:%d)", imageBuf.getHeight(), imageBuf.getWidth()));
+                payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_SIZE);
+            }
+        } else {
+            payload.setFitnoteCheckStatus(ImagePayload.Status.PASS_IMG_SIZE);
+            LOG.info("NO LANDSCAPE ENFORCEMENT FOR IMAGE DIMENSIONS");
+            returnValue = true;
+        }
+        return returnValue;
+    }
+
+    private boolean validateCompressedImage(byte[] compressedImage, ImagePayload payload, boolean validSize) throws ImageCompressException {
+        boolean returnValue = false;
+        if (compressedImage == null) {
+            throw new ImageCompressException("The compressed image return a null byte array");
+        }
+
+        if (validSize) {
+            if (compressedImage.length >= (controllerConfiguration.getTargetImageSizeKB() * 1000)) {
+                LOG.info(String.format("Written %d bytes back to the ImagePayload for %s - OCR Checks", compressedImage.length, payload.getSessionId()));
+                payload.setImage(Base64.encodeBase64String(compressedImage));
+                returnValue = true;
+            } else {
+                payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_SIZE);
+                LOG.info(String.format("Image failed at validateCompressedImage. Threshold is %s, actual size is %d", controllerConfiguration.getTargetImageSizeKB() * 1000, compressedImage.length));
+            }
+        }
+        if (!validSize) {
+            LOG.info(String.format("Written %d bytes back to the ImagePayload for %s - FINAL Submission", compressedImage.length, payload.getSessionId()));
+            payload.setFitnoteCheckStatus(ImagePayload.Status.SUCCEEDED);
+            payload.setImage(Base64.encodeBase64String(compressedImage));
+            returnValue = true;
+        }
+        return returnValue;
+    }
+
+
+    private boolean ocrImage(ImagePayload payload) throws IOException, ImageCompressException {
+        boolean ocrStatus = false;
+
+        if (!controllerConfiguration.isOcrChecksEnabled()) {
+            LOG.info("NO OCR CHECKS OR ROTATION CONFIGURED IMAGES");
+            ocrStatus = true;
+
+        } else {
+            byte[] compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))), controllerConfiguration.getScanTargetImageSizeKb(), false);
+            if (validateCompressedImage(compressedImage, payload, true)) {
+                ExpectedFitnoteFormat.Status imageStatus = ocrChecker.imageContainsReadableText(payload);
+                if (imageStatus.equals(ExpectedFitnoteFormat.Status.SUCCESS)) {
+                    payload.setFitnoteCheckStatus(ImagePayload.Status.PASS_IMG_OCR);
+                    ocrStatus = true;
+
+                } else if (imageStatus.equals(ExpectedFitnoteFormat.Status.PARTIAL)) {
+                    payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR_PARTIAL);
+
+                } else if ((imageStatus.equals(ExpectedFitnoteFormat.Status.FAILED)) || (imageStatus.equals(ExpectedFitnoteFormat.Status.INITIALISED))) {
+                    payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR);
+                    LOG.warn("Unable to OCR the fitnote");
+                }
+            }
+        }
+
+        return ocrStatus;
+    }
+}

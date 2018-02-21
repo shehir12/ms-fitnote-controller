@@ -1,0 +1,61 @@
+server:
+  applicationConnectors:
+  - type: http 
+    port: 9100
+  adminConnectors:
+  - type: http
+    port: 9101
+
+expirytimeinmilliseconds: 70000
+frequencyofexpirytimecheckinmilliseconds: 100
+
+rabbitMqURI: amqp://system:manager@localhost:15671
+eventRoutingKey: incoming.submission.fn
+rabbitExchangeName: rabbit.fitnote.ex
+
+easPostCodeLookUpUrl: https://localhost:8086/esa/findCenter/
+
+sslTruststoreFilename: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ts
+sslKeystoreFilename: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ks
+sslTruststorePassword: password
+sslKeystorePassword: password
+
+sslTruststoreFilenameESA: src/test/resources/tls/esaCenterLookupTrustStore.jks
+sslTruststorePasswordESA: password
+
+ocrChecksEnabled: true
+forceLandscapeImageSubmission: false
+tesseractFolderPath: src/main/properties
+
+rejectingOversizeImages: true
+targetImageSizeKB: 500
+greyScale: true
+
+pdfScanDPI: 300
+scanTargetImageSize: 1000
+
+highTarget: 100
+diagonalTarget: 20
+
+maxLogChars: 50
+targetBrightness: 178
+borderLossPercentage: 10
+contrastCutOff: 105
+
+estimatedRequestMemoryMb: 0
+
+topLeftText:
+  - "Understand user needs"
+topRightText:
+  - "end-to-end service"
+  - "all common browsers"
+baseLeftText:
+  - "all new source code open"
+baseRightText:
+  - "Performance Platform"
+  - "beginning to end"
+
+esaDefaultRoutingForDRS: ES33 9QX
+
+logging:
+  level: INFO

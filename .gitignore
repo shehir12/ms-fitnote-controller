@@ -1,0 +1,16 @@
+**/.DS_Store
+.idea/
+*.iml
+target/
+.classpath
+.project
+.settings/
+CompressorTest*.jpg
+Base.jpg
+Top.jpg
+outputs/
+work
+dev.yml
+src/test/resources/fitnotes/
+src/test/resources/scripts/
+src/test/java/fitnotecontroller/utils/fitnotes/
