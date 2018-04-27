@@ -14,3 +14,5 @@ dev.yml
 src/test/resources/fitnotes/
 src/test/resources/scripts/
 src/test/java/fitnotecontroller/utils/fitnotes/
+Dockerfile
+Jenkinsfile
