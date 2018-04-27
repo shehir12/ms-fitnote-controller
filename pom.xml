@@ -4,32 +4,35 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>fitnote</groupId>
-    <artifactId>fitnote-controller</artifactId>
-    <version>0.13.0</version>
+    <groupId>uk.gov.dwp.health.fitnote</groupId>
+    <artifactId>ms-fitnote-controller</artifactId>
+    <version>0.14.0</version>
 
     <properties>
+        <dwp.rabbitmq-events.version>1.7.0-BETA</dwp.rabbitmq-events.version>
+        <dwp.secure-sockets.version>1.5.0</dwp.secure-sockets.version>
+        <dwp.securestrings.version>1.4.0</dwp.securestrings.version>
+        <dwp.encoded-log.version>1.2.1</dwp.encoded-log.version>
+        <dwp.postcode.version>1.1.0</dwp.postcode.version>
+        <dwp.drsinteg.version>1.5.0</dwp.drsinteg.version>
+        <dwp.crypto.version>1.4.0</dwp.crypto.version>
+        <dwp.nino.version>1.1.0</dwp.nino.version>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <dwp.rabbitmq-events.version>1.1.0</dwp.rabbitmq-events.version>
         <cucumber-core.version>1.2.4</cucumber-core.version>
         <cucumber-jvm.version>1.0.3</cucumber-jvm.version>
         <tesseract.version>3.04.01-1.2</tesseract.version>
-        <securesockets.version>1.0</securesockets.version>
         <dropwizard.version>1.1.0</dropwizard.version>
         <commons-io.version>1.3.2</commons-io.version>
-        <encoded-log.version>1.0</encoded-log.version>
         <jetty.version>9.4.6.v20170531</jetty.version>
         <jackson.version>2.8.11.1</jackson.version>
         <wiremock.version>2.6.0</wiremock.version>
         <mockito.version>1.10.19</mockito.version>
-        <drsinteg.version>1.3</drsinteg.version>
-        <postcode.version>1.0</postcode.version>
         <pdfbox.version>2.0.8</pdfbox.version>
-        <owasp.version>2.0.1</owasp.version>
+        <owasp.version>3.1.2</owasp.version>
         <junit.version>4.11</junit.version>
         <zxing.version>2.2</zxing.version>
-        <qpid.version>0.28</qpid.version>
-        <nino.version>1.0</nino.version>
+        <qpid.version>6.0.1</qpid.version>
     </properties>
 
     <dependencies>
@@ -57,6 +60,22 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.dwp.crypto</groupId>
+            <artifactId>secure-strings</artifactId>
+            <version>${dwp.securestrings.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.dwp.tls</groupId>
+            <artifactId>secure-sockets</artifactId>
+            <version>${dwp.secure-sockets.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -95,14 +114,19 @@
             <version>${commons-io.version}</version>
         </dependency>
         <dependency>
-            <groupId>gov.dwp.software-engineering.formatvalidation</groupId>
-            <artifactId>nino</artifactId>
-            <version>${nino.version}</version>
+            <groupId>uk.gov.dwp.health.crypto</groupId>
+            <artifactId>data-cryptography</artifactId>
+            <version>${dwp.crypto.version}</version>
         </dependency>
         <dependency>
-            <groupId>gov.dwp.software-engineering.formatvalidation</groupId>
-            <artifactId>postcode</artifactId>
-            <version>${postcode.version}</version>
+            <groupId>uk.gov.dwp.regex</groupId>
+            <artifactId>nino-validation</artifactId>
+            <version>${dwp.nino.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.dwp.regex</groupId>
+            <artifactId>postcode-validation</artifactId>
+            <version>${dwp.postcode.version}</version>
         </dependency>
         <dependency>
             <groupId>io.dropwizard</groupId>
@@ -139,9 +163,9 @@
             <version>${zxing.version}</version>
         </dependency>
         <dependency>
-            <groupId>dwp-utility</groupId>
-            <artifactId>drs-integrator-utility</artifactId>
-            <version>${drsinteg.version}</version>
+            <groupId>uk.gov.dwp.components.drs</groupId>
+            <artifactId>message-upload-handler</artifactId>
+            <version>${dwp.drsinteg.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
@@ -149,8 +173,8 @@
             <version>${pdfbox.version}</version>
         </dependency>
         <dependency>
-            <groupId>uk.gov.dwp.health</groupId>
-            <artifactId>rabbitmq-messaging-utility</artifactId>
+            <groupId>uk.gov.dwp.health.rabbitmq</groupId>
+            <artifactId>messaging-utility</artifactId>
             <version>${dwp.rabbitmq-events.version}</version>
         </dependency>
         <dependency>
@@ -163,6 +187,7 @@
             <groupId>org.apache.qpid</groupId>
             <artifactId>qpid-broker</artifactId>
             <version>${qpid.version}</version>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.eclipse.jetty</groupId>
@@ -176,8 +201,11 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
             </exclusions>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.github.tomakehurst</groupId>
@@ -228,9 +256,9 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>gov.dwp.software-engineering</groupId>
+            <groupId>uk.gov.dwp.logging</groupId>
             <artifactId>encoded-logger-output</artifactId>
-            <version>${encoded-log.version}</version>
+            <version>${dwp.encoded-log.version}</version>
         </dependency>
     </dependencies>
     <build>
@@ -265,7 +293,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <phase>test</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -325,7 +352,7 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>fitnotecontroller.application.FitnoteControllerApplication</mainClass>
+                                    <mainClass>uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerApplication</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

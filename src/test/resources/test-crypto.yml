@@ -16,6 +16,11 @@ imageHashSalt: salty
 rabbitMqURI: amqp://system:manager@localhost:9105
 rabbitEventRoutingKey: incoming.submission.fn
 rabbitExchangeName: rabbit.fitnote.ex
+rabbitEncryptMessages: true
+
+kmsCryptoConfiguration:
+  kmsEndpointOverride: http://localhost:5678
+  dataKeyRequestId: test_request_id
 
 rabbitMqTruststoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ts
 rabbitMqKeystoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ks

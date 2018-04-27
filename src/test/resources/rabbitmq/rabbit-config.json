@@ -1,32 +1,44 @@
 {
   "name" : "EmbeddedBroker",
-  "defaultVirtualHost" : "default",
-  "modelVersion" : "1.0",
-  "storeVersion" : 1,
+  "modelVersion" : "6.0",
   "authenticationproviders" : [ {
-    "name" : "passwordFile",
-    "path" : "${qpid.pass_file}",
-    "type" : "PlainPasswordFile"
+    "name" : "plain",
+    "type" : "Plain",
+    "secureOnlyMechanisms": [],
+    "users" : [ {
+      "name" : "system",
+      "type" : "managed",
+      "password" : "manager"
+    } ]
   } ],
   "ports" : [ {
     "name" : "AMQP",
     "port" : "${qpid.amqp_port}",
-    "authenticationProvider" : "passwordFile"
+    "authenticationProvider" : "plain",
+    "virtualhostaliases" : [ {
+      "name" : "defaultAlias",
+      "type" : "defaultAlias"
+    }]
   },  {
     "name" : "AMQPS",
-    "port" : "15672",
-    "authenticationProvider" : "passwordFile",
+    "port" : "16675",
+    "authenticationProvider" : "plain",
     "transports" : [ "SSL" ],
-    "keyStore" : "testKeyStore"
+    "keyStore" : "testKeyStore",
+    "virtualhostaliases" : [ {
+      "name" : "defaultAlias",
+      "type" : "defaultAlias"
+    }]
   } ],
-  "virtualhosts" : [ {
+  "virtualhostnodes" : [ {
     "name" : "default",
-    "storeType" : "Memory",
-    "type" : "STANDARD"
+    "type" : "JSON",
+    "defaultVirtualHostNode" : "true",
+    "virtualHostInitialConfiguration" : "{\"type\" : \"Memory\",\"name\" : \"default\",\"modelVersion\" : \"6.0\"}"
   } ],
   "keystores" : [ {
     "name" : "testKeyStore",
     "password" : "password",
-    "path": "src/test/resources/rabbitmq/rabbitmq-client.ks"
+    "storeUrl": "src/test/resources/rabbitmq/rabbitmq-client.ks"
   }]
 }

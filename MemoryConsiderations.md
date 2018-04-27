@@ -42,7 +42,7 @@ but the application remains active
 
 ## Reject potential OutOfMemory for processing
 
-The OCR and image manipulation takes quite a bit of memory and although it may be possible to accept the image payload there may not be enough memory to actually process it.  `fitnotecontroller.utils.MemoryChecker` class uses the yml entry `estimatedRequestMemoryMb` (defaulting to 25mb) to check the available Runtime memory.  If the available runtime memory is less than the `estimatedRequestMemoryMb` the request will be rejected with a 503 (service unavailable).
+The OCR and image manipulation takes quite a bit of memory and although it may be possible to accept the image payload there may not be enough memory to actually process it.  `MemoryChecker` class uses the yml entry `estimatedRequestMemoryMb` (defaulting to 25mb) to check the available Runtime memory.  If the available runtime memory is less than the `estimatedRequestMemoryMb` the request will be rejected with a 503 (service unavailable).
 
 - 'Edit Configurations' on FitnoteControllerApplication and add the following to the VM Options:-
     - `-Xms35m -Xmx35m` (to give the JVM 35m to play with a no extensions)
@@ -51,8 +51,8 @@ The OCR and image manipulation takes quite a bit of memory and although it may b
     
 The applications rejects...
 
-    INFO  [2017-07-06 11:59:28,622] fitnotecontroller.utils.MemoryChecker (dwp encoded): Current available memory is 13mb, abs required memory is 25mb, request REJECTED
-    DEBUG [2017-07-06 11:59:28,622] fitnotecontroller.FitnoteSubmitResource (dwp encoded): Completed /photo, send back status 503
+    INFO  [2017-07-06 11:59:28,622] MemoryChecker (dwp encoded): Current available memory is 13mb, abs required memory is 25mb, request REJECTED
+    DEBUG [2017-07-06 11:59:28,622] FitnoteSubmitResource (dwp encoded): Completed /photo, send back status 503
     0:0:0:0:0:0:0:1 - - [06/Jul/2017:11:59:28 +0000] "POST /photo HTTP/1.1" 503 25 "-" "curl/7.54.0" 49
 
 ## Image processing runs out of memory
@@ -65,12 +65,12 @@ The applications rejects...
     
 The application rejects...
 
-    INFO  [2017-07-06 12:29:06,241] fitnotecontroller.utils.MemoryChecker (dwp encoded): Current available memory is 14mb, abs required memory is 5mb, request ALLOWED
-    DEBUG [2017-07-06 12:29:06,392] fitnotecontroller.ImageStorage (dwp encoded): Session id does not exist, created entry for 1234
-    DEBUG [2017-07-06 12:29:06,576] fitnotecontroller.FitnoteSubmitResource (dwp encoded): Json Validated correctly
-    DEBUG [2017-07-06 12:29:06,577] fitnotecontroller.FitnoteSubmitResource (dwp encoded): Completed /photo, send back status 202
+    INFO  [2017-07-06 12:29:06,241] MemoryChecker (dwp encoded): Current available memory is 14mb, abs required memory is 5mb, request ALLOWED
+    DEBUG [2017-07-06 12:29:06,392] ImageStorage (dwp encoded): Session id does not exist, created entry for 1234
+    DEBUG [2017-07-06 12:29:06,576] FitnoteSubmitResource (dwp encoded): Json Validated correctly
+    DEBUG [2017-07-06 12:29:06,577] FitnoteSubmitResource (dwp encoded): Completed /photo, send back status 202
     0:0:0:0:0:0:0:1 - - [06/Jul/2017:12:29:06 +0000] "POST /photo HTTP/1.1" 202 20 "-" "curl/7.54.0" 455
-    ERROR [2017-07-06 12:29:06,820] fitnotecontroller.FitnoteSubmitResource (dwp encoded): java.lang.OutOfMemoryError: Java heap space
+    ERROR [2017-07-06 12:29:06,820] FitnoteSubmitResource (dwp encoded): java.lang.OutOfMemoryError: Java heap space
 
 When the thread reports the **OutOfMemory** error it will set the status for the image before it exits to preserve the user journey.  When the front-end checks back on the status of the request (after being given the initial 202) it will get:-
 
