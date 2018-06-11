@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonView;
 import org.apache.commons.io.IOUtils;
@@ -61,6 +62,11 @@ public class ImagePayload {
 
     public NinoValidator getNinoObject() {
         return (nino.length() == 9) ? new NinoValidator(nino.substring(0, 8), nino.substring(8)) : new NinoValidator(nino, "");
+    }
+
+    @JsonIgnore
+    public int getRawImageSize() {
+        return this.image != null ? this.image.length : 0;
     }
 
     public String getNino() {

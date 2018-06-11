@@ -7,7 +7,7 @@ server:
     port: 9102
 
 expirytimeinmilliseconds: 150000
-frequencyofexpirytimecheckinmilliseconds: 100
+frequencyofexpirytimecheckinmilliseconds: 10000
 
 imageReplayExpiryMilliseconds: 60000
 maxAllowedImageReplay: 10

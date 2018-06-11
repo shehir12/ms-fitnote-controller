@@ -40,13 +40,18 @@ public class FitnoteAddressResource {
             ImagePayload payload = imageStore.getPayload(receivedAddress.getSessionId());
             payload.setClaimantAddress(receivedAddress);
             serviceResponse = Response.status(HttpStatus.SC_OK).build();
+
         } catch (NewAddressException e) {
             serviceResponse = Response.status(HttpStatus.SC_BAD_REQUEST).entity(ERROR_RESPONSE).build();
+            LOG.error("NewAddressException :: {}", e.getMessage());
             LOG.debug(e.getClass().getName(), e);
+
         } catch (Exception e) {
             serviceResponse = Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_RESPONSE).build();
+            LOG.error("Exception :: {}", e.getMessage());
             LOG.debug(e.getClass().getName(), e);
         }
+
         return serviceResponse;
     }
 }

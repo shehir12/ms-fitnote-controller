@@ -51,7 +51,7 @@ public class FitnoteSubmitResourceTest {
 
     private static final String SESSION = "session1";
     private Optional sessionIdParameter = Mockito.mock(Optional.class);
-    private long EXPIRY_TIME_MILLISECONDS = 15000;
+    private long EXPIRY_TIME_MILLISECONDS = 60000;
     private static String LANDSCAPE_FITNOTE_IMAGE;
     private static String PORTRAIT_FITNOTE_IMAGE;
     private static String PDF_FITNOTE_IMAGE;
@@ -240,7 +240,7 @@ public class FitnoteSubmitResourceTest {
         long startTime = System.currentTimeMillis();
 
         response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("NEVER_GONNA_MATCH"))) {
+        while (((System.currentTimeMillis() - startTime) < 10000) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("NEVER_GONNA_MATCH"))) {
             assertThat(response.getStatus(), is(equalTo(SC_OK)));
 
             Thread.sleep(1000);

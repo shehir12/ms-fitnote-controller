@@ -2,6 +2,7 @@ package uk.gov.dwp.health.fitnotecontroller.application;
 
 import uk.gov.dwp.health.crypto.CryptoDataManager;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
+import uk.gov.dwp.health.crypto.rabbitmq.MessageEncoder;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteAddressResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteConfirmationResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteDeclarationResource;
@@ -29,7 +30,9 @@ public class FitnoteControllerApplication extends Application<FitnoteControllerC
             kmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getKmsCryptoConfig());
         }
 
-        final PublishSubscribe rabbitMqPublisher = new PublishSubscribe(kmsCrypto, fitnoteControllerConfiguration.getRabbitMqURI());
+        final MessageEncoder cryptoMessageEncoder = new MessageEncoder(kmsCrypto);
+
+        final PublishSubscribe rabbitMqPublisher = new PublishSubscribe(kmsCrypto, cryptoMessageEncoder, fitnoteControllerConfiguration.getRabbitMqURI());
         rabbitMqPublisher.setTruststoreCredentials(fitnoteControllerConfiguration.getRabbitMqTruststoreFile(), fitnoteControllerConfiguration.getRabbitMqTruststorePass());
         rabbitMqPublisher.setKeystoreCredentials(fitnoteControllerConfiguration.getRabbitMqKeystoreFile(), fitnoteControllerConfiguration.getRabbitMqKeystorePass());
 

@@ -17,7 +17,7 @@ import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
 
 @RunWith(Cucumber.class)
 @SuppressWarnings("squid:S2187")
-@CucumberOptions(plugin = "json:target/cucumber-report.json", tags = {"@CH"})
+@CucumberOptions(plugin = "json:target/cucumber-report.json", tags = {})
 public class RunCukesTest {
     private final static Logger LOGGER = DwpEncodedLogger.getLogger(RunCukesTest.class.getName());
 

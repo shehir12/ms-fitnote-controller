@@ -3,8 +3,8 @@ package uk.gov.dwp.health.fitnotecontroller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
-import uk.gov.dwp.health.fitnotecontroller.FitnoteDeclarationResource;
-import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
+import uk.gov.dwp.health.crypto.rabbitmq.exceptions.EventsMessageException;
+import uk.gov.dwp.health.crypto.rabbitmq.items.event.EventMessage;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
@@ -19,8 +19,6 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import uk.gov.dwp.components.drs.DrsCommunicatorException;
 import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
-import uk.gov.dwp.health.rabbitmq.exceptions.EventsManagerException;
-import uk.gov.dwp.health.rabbitmq.items.event.EventMessage;
 import uk.gov.dwp.tls.TLSGeneralException;
 
 import javax.ws.rs.core.Response;
@@ -76,7 +74,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns200WithValidAcceptedDeclaration_PLAIN() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsManagerException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAcceptedDeclaration_PLAIN() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
 
@@ -93,7 +91,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns200WithValidAcceptedDeclaration_ENCRYPTED() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsManagerException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAcceptedDeclaration_ENCRYPTED() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
 
@@ -209,7 +207,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns500WhenARabbitExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException, EventsManagerException, CryptoException {
+    public void returns500WhenARabbitExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException, EventsMessageException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 
@@ -218,7 +216,7 @@ public class FitnoteDeclarationResourceTest {
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
         when(imageStore.getPayload("123456")).thenReturn(payload);
 
-        doThrow(new EventsManagerException("i am an exception!")).when(publishSubscribe).publishMessageToExchange(eq(false), eq("test.exchange"), eq("route.one"), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        doThrow(new EventsMessageException("i am an exception!")).when(publishSubscribe).publishMessageToExchange(eq(false), eq("test.exchange"), eq("route.one"), any(EventMessage.class), any(AMQP.BasicProperties.class));
 
         Response response = resource.submitDeclaration(ACCEPTED_DECLARATION);
         assertThat(response.getStatus(), is(500));
@@ -264,7 +262,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns200WithValidAddress() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsManagerException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAddress() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 

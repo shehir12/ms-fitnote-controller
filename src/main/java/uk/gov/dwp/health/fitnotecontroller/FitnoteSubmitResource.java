@@ -90,6 +90,7 @@ public class FitnoteSubmitResource {
                 ImagePayload storedPayload = imageStorage.getPayload(incomingPayload.getSessionId());
                 storedPayload.setFitnoteCheckStatus(incomingPayload.getFitnoteCheckStatus());
                 storedPayload.setImage(incomingPayload.getImage());
+                imageStorage.logStorageStatistics();
 
                 response = createResponseOf(HttpStatus.SC_ACCEPTED, createSessionOnlyResponseFrom(incomingPayload));
                 LOG.debug("Json Validated correctly");
@@ -101,9 +102,11 @@ public class FitnoteSubmitResource {
 
         } catch (ImagePayloadException | ImageHashException e) {
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
             LOG.debug(ERROR_MSG, e);
         } catch (IOException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.error("IOException :: {}", e.getClass().getName(), e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
         LOG.debug("Completed /photo, send back status {}", response.getStatusInfo().getStatusCode());
@@ -134,9 +137,11 @@ public class FitnoteSubmitResource {
 
         } catch (ImagePayloadException e) {
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.error("ImagePayloadException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         } catch (JsonProcessingException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.error("JsonProcessingException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
         return response;
@@ -154,7 +159,7 @@ public class FitnoteSubmitResource {
 
             } catch (ImagePayloadException | IOException | OutOfMemoryError e) {
                 payload.setBarcodeCheckStatus(ImagePayload.Status.FAILED_ERROR);
-                LOG.error(e.getMessage());
+                LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
                 LOG.debug(e.getClass().getName(), e);
             }
 
@@ -186,9 +191,11 @@ public class FitnoteSubmitResource {
                 byte[] compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))), controllerConfiguration.getTargetImageSizeKB(), controllerConfiguration.isGreyScale());
                 validateCompressedImage(compressedImage, payload, false);
 
-            } catch (ImagePayloadException | IOException | ImageCompressException | OutOfMemoryError e) {
+            } catch (Exception e) {
                 payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_ERROR);
-                LOG.warn(e.getMessage());
+                payload.setImage(null);
+
+                LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
                 LOG.debug(e.getClass().getName(), e);
             }
         }).start();
@@ -305,9 +312,13 @@ public class FitnoteSubmitResource {
 
                 } else if (imageStatus.equals(ExpectedFitnoteFormat.Status.PARTIAL)) {
                     payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR_PARTIAL);
+                    payload.setImage(null);
 
+                    LOG.warn("Unable to OCR the fitnote");
                 } else if ((imageStatus.equals(ExpectedFitnoteFormat.Status.FAILED)) || (imageStatus.equals(ExpectedFitnoteFormat.Status.INITIALISED))) {
                     payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR);
+                    payload.setImage(null);
+
                     LOG.warn("Unable to OCR the fitnote");
                 }
             }

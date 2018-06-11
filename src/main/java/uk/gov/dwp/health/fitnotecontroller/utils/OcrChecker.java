@@ -36,6 +36,7 @@ public class OcrChecker {
     public ExpectedFitnoteFormat.Status imageContainsReadableText(ImagePayload imagePayload) throws IOException {
         byte[] decode = Base64.decodeBase64(imagePayload.getImage());
         String sessionID = imagePayload.getSessionId();
+        long startTime = System.currentTimeMillis();
         ExpectedFitnoteFormat.Status imageStatus;
 
         ByteArrayInputStream inputStream = new ByteArrayInputStream(decode);
@@ -58,7 +59,7 @@ public class OcrChecker {
             imageStatus = readableImageFormat.getStatus();
         }
 
-        LOG.info("End OCR checks :: SID:{} {}", sessionID, imageStatus);
+        LOG.info("End OCR checks :: SID: {} {} :: Response time (seconds) = {}", sessionID, imageStatus, ((System.currentTimeMillis() - startTime) / 1000));
         return imageStatus;
     }
 

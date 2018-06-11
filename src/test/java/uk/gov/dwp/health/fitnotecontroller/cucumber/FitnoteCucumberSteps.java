@@ -57,7 +57,7 @@ import static org.junit.Assert.assertNull;
 @SuppressWarnings("squid:S2925")
 public class FitnoteCucumberSteps {
     private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteCucumberSteps.class.getName());
-    private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 60000;
+    private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 120000;
     private static Broker rabbitMqBroker = new Broker();
     private static URI rabbitMqUri;
 

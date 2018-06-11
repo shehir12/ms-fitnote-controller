@@ -3,6 +3,9 @@ package uk.gov.dwp.health.fitnotecontroller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
+import uk.gov.dwp.health.crypto.rabbitmq.exceptions.EventsMessageException;
+import uk.gov.dwp.health.crypto.rabbitmq.items.event.EventMessage;
+import uk.gov.dwp.health.crypto.rabbitmq.items.event.MetaData;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
 import uk.gov.dwp.health.fitnotecontroller.domain.FitnoteMetadata;
@@ -15,8 +18,6 @@ import org.slf4j.Logger;
 import uk.gov.dwp.components.drs.DrsPayloadBuilder;
 import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
 import uk.gov.dwp.health.rabbitmq.exceptions.EventsManagerException;
-import uk.gov.dwp.health.rabbitmq.items.event.EventMessage;
-import uk.gov.dwp.health.rabbitmq.items.event.MetaData;
 import uk.gov.dwp.logging.DwpEncodedLogger;
 import uk.gov.dwp.tls.TLSGeneralException;
 
@@ -169,7 +170,7 @@ public class FitnoteDeclarationResource {
 
         } catch (URISyntaxException | TimeoutException | NoSuchAlgorithmException | KeyManagementException |
                 IOException | UnrecoverableKeyException | CertificateException | KeyStoreException |
-                TLSGeneralException | EventsManagerException | CryptoException e) {
+                TLSGeneralException | EventsMessageException | CryptoException e) {
 
             LOG.error("Publishing error {} :: {}", e.getClass().getName(), e.getMessage());
             LOG.debug(e.getClass().getName(), e);

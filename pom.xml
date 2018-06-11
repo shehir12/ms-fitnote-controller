@@ -6,10 +6,10 @@
 
     <groupId>uk.gov.dwp.health.fitnote</groupId>
     <artifactId>ms-fitnote-controller</artifactId>
-    <version>0.14.0</version>
+    <version>0.15.0</version>
 
     <properties>
-        <dwp.rabbitmq-events.version>1.7.0-BETA</dwp.rabbitmq-events.version>
+        <dwp.rabbitmq-events.version>1.8.0</dwp.rabbitmq-events.version>
         <dwp.secure-sockets.version>1.5.0</dwp.secure-sockets.version>
         <dwp.securestrings.version>1.4.0</dwp.securestrings.version>
         <dwp.encoded-log.version>1.2.1</dwp.encoded-log.version>

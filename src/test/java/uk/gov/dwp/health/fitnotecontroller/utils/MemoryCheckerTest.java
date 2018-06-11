@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
+import org.junit.Before;
 import uk.gov.dwp.health.fitnotecontroller.utils.MemoryChecker;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,6 +18,11 @@ public class MemoryCheckerTest {
 
     @Mock
     private Runtime runTimeMock;
+
+    @Before
+    public void setup() {
+        when(runTimeMock.totalMemory()).thenReturn(20 * MEGABYTE);
+    }
 
     @Test
     public void validateMemoryAvailableIsEnough() {

@@ -45,11 +45,15 @@ public class FitnoteConfirmationResource {
             imageStorage.updateNinoDetails(imagePayload);
             LOG.info("NINO updated");
             response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
+
         } catch (ImagePayloadException e) {
-            LOG.debug("Unable to process request examining payload", e);
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.error("ImagePayloadException exception :: {}", e.getMessage());
+            LOG.debug("Unable to process request examining payload", e);
+
         } catch (JsonProcessingException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.error("JsonProcessingException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
         return response;
@@ -67,11 +71,15 @@ public class FitnoteConfirmationResource {
             imageStorage.updateMobileDetails(payload);
             LOG.info("Mobile number updated");
             response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
+
         } catch (ImagePayloadException e) {
-            LOG.debug("Unable to process request when examining payload", e);
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
+            LOG.debug("Unable to process request when examining payload", e);
+            LOG.error("ImagePayloadException :: {}", e.getMessage());
+
         } catch (JsonProcessingException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.error("JsonProcessingException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
         return response;

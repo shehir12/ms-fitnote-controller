@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ImageStorage {
     private static final Logger LOG = DwpEncodedLogger.getLogger(ImageStorage.class.getName());
     private static final String NULL_PAYLOAD_MSG = "Null payload object rejected";
+    private static final long MEGABYTE = 1024L * 1024L;
+
     private Map<String, ImageHashStore> imageHashStack = new ConcurrentHashMap<>();
     private Map<String, ImagePayload> images = new ConcurrentHashMap<>();
     private final FitnoteControllerConfiguration configuration;
@@ -110,19 +112,35 @@ public class ImageStorage {
     }
 
     public void clearExpiredObjects() {
+        int imageStorageBytes = 0;
+        int hashStorageBytes = 0;
+
         for (Map.Entry<String, ImagePayload> imageObject : images.entrySet()) {
+            if (images.get(imageObject.getValue().getSessionId()).getImage() != null) {
+                imageStorageBytes += images.get(imageObject.getValue().getSessionId()).getRawImageSize();
+            }
+
             long sessionExpiryTime = images.get(imageObject.getValue().getSessionId()).getExpiryTime();
+
             if (sessionExpiryTime < System.currentTimeMillis()) {
                 LOG.info("Clearing expired session {}", imageObject.getValue().getSessionId());
                 clearSession(imageObject.getValue().getSessionId());
             }
         }
         for (Map.Entry<String, ImageHashStore> imageHashObject : imageHashStack.entrySet()) {
+            hashStorageBytes += imageHashObject.getKey().getBytes().length;
+
             if (imageHashObject.getValue().getExpiryTime() < System.currentTimeMillis()) {
                 LOG.info("Clearing expired hashed image created @ {}", imageHashObject.getValue().getCreateDateTime());
                 imageHashStack.remove(imageHashObject.getKey());
             }
         }
+
+        LOG.info("STATS :: image storage {} item using {} bytes, image hash storage {} items using {} bytes", images.size(), imageStorageBytes, imageHashStack.size(), hashStorageBytes);
+    }
+
+    public void logStorageStatistics() {
+        LOG.info("Total existing ImagePayload sessions = {}, ImageHashStore sessions = {}", images.size(), imageHashStack.size());
     }
 
     public void clearSession(String sessionId) {
