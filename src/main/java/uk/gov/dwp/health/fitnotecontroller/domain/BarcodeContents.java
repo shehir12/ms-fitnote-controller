@@ -1,15 +1,15 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.exception.QRExtractionException;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class BarcodeContents {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(BarcodeContents.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BarcodeContents.class.getName());
     private Date caseAssessmentDate;
     private Date statementDate;
 

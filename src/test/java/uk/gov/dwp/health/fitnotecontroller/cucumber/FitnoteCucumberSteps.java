@@ -22,11 +22,11 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.apache.qpid.server.Broker;
 import org.junit.Rule;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.crypto.CryptoConfig;
 import uk.gov.dwp.health.crypto.CryptoDataManager;
 import uk.gov.dwp.health.crypto.CryptoMessage;
 import uk.gov.dwp.health.rabbitmq.EventConstants;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 import uk.gov.dwp.tls.TLSGeneralException;
 
 import java.io.IOException;
@@ -56,7 +56,7 @@ import static org.junit.Assert.assertNull;
 
 @SuppressWarnings("squid:S2925")
 public class FitnoteCucumberSteps {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteCucumberSteps.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(FitnoteCucumberSteps.class.getName());
     private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 120000;
     private static Broker rabbitMqBroker = new Broker();
     private static URI rabbitMqUri;
@@ -135,7 +135,7 @@ public class FitnoteCucumberSteps {
         String fullUrl = String.format("%s?sessionId=%s", url, sessionId);
         long startTime = System.currentTimeMillis();
 
-        while (!HttpResponseBodyContainsEntries(expectedValues)) {
+        do {
             if ((System.currentTimeMillis() - startTime) > IMAGE_STATUS_QUERY_TIMEOUT_MILLIS) {
                 throw new IOException(String.format("TIMING OUT :: '%s' request after %d milliseconds with no match on response body", url, IMAGE_STATUS_QUERY_TIMEOUT_MILLIS));
             }
@@ -143,7 +143,8 @@ public class FitnoteCucumberSteps {
             Thread.sleep(1000);
             performHttpGetWithUriOf(fullUrl);
             checkHTTPResponseStatusCode(status);
-        }
+
+        } while (!HttpResponseBodyContainsEntries(expectedValues));
     }
 
     @And("^I hit the service url \"([^\"]*)\" with session id \"([^\"]*)\" getting return status (\\d+) and finally timing out trying to match the following body$")

@@ -1,5 +1,7 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
@@ -7,11 +9,9 @@ public class ImageHashStore {
     private String createDateTime;
     private String lastSubmitted;
     private int submissionCount;
-    private long expiryTime;
 
-    public ImageHashStore(long expiryTime) {
-        this.createDateTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-        setExpiryTime(expiryTime);
+    public ImageHashStore() {
+        // for serialisation purposes
     }
 
     public int getSubmissionCount() {
@@ -20,14 +20,6 @@ public class ImageHashStore {
 
     public void incSubmissionCount() {
         this.submissionCount++;
-    }
-
-    public long getExpiryTime() {
-        return expiryTime;
-    }
-
-    public void setExpiryTime(long expiryTime) {
-        this.expiryTime = expiryTime;
     }
 
     public String getLastSubmitted() {
@@ -40,5 +32,10 @@ public class ImageHashStore {
 
     public String getCreateDateTime() {
         return createDateTime;
+    }
+
+    @JsonIgnore
+    public void initCreateDateTime() {
+        this.createDateTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
     }
 }

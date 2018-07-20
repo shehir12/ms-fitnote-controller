@@ -1,14 +1,14 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.exception.FuzzyStringMatchException;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class FuzzyStringMatch {
-    private static final Logger LOGGER = DwpEncodedLogger.getLogger(FuzzyStringMatch.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(FuzzyStringMatch.class.getName());
     private static Map<Character, String> charList;
     private static final int SPACE_CHARACTER = 32;
     private static final int PERFECT = 100;

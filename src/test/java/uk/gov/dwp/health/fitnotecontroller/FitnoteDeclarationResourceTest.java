@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.crypto.rabbitmq.exceptions.EventsMessageException;
-import uk.gov.dwp.health.crypto.rabbitmq.items.event.EventMessage;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
@@ -19,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import uk.gov.dwp.components.drs.DrsCommunicatorException;
 import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
+import uk.gov.dwp.health.rabbitmq.items.event.EventMessage;
 import uk.gov.dwp.tls.TLSGeneralException;
 
 import javax.ws.rs.core.Response;
@@ -109,7 +109,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void return400WithMissingImagePayload() throws IOException, DeclarationException, ImagePayloadException {
+    public void return400WithMissingImagePayload() throws IOException, DeclarationException, ImagePayloadException, CryptoException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(null, "123456", "NINO", "123456", false);
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
@@ -126,7 +126,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void return400WithMissingNinoPayload() throws IOException, DeclarationException, ImagePayloadException {
+    public void return400WithMissingNinoPayload() throws IOException, DeclarationException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am an image", "123456", null, "123456", true);
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
@@ -143,7 +143,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void return400WithMissingAddress() throws IOException, DeclarationException, ImagePayloadException {
+    public void return400WithMissingAddress() throws IOException, DeclarationException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am an image", "123456", "NINO", "123456", true);
 
@@ -181,7 +181,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns400WithADeclinedDeclaration() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException {
+    public void returns400WithADeclinedDeclaration() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, CryptoException {
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 
         when(jsonValidator.validateAndTranslateDeclaration(DECLINED_DECLARATION)).thenThrow(new DeclarationException("Invalid value"));
@@ -207,7 +207,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns500WhenARabbitExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException, EventsMessageException, CryptoException {
+    public void returns500WhenARabbitExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, CryptoException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException, EventsMessageException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 
@@ -226,7 +226,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns400WhenAcceptedDeclarationWithNoNino() throws DeclarationException, IOException, ImagePayloadException {
+    public void returns400WhenAcceptedDeclarationWithNoNino() throws DeclarationException, IOException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
 
@@ -242,7 +242,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns400WhenAcceptedDeclarationWithBadImageCheck() throws DeclarationException, IOException, ImagePayloadException {
+    public void returns400WhenAcceptedDeclarationWithBadImageCheck() throws DeclarationException, IOException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
 
@@ -262,7 +262,7 @@ public class FitnoteDeclarationResourceTest {
     }
 
     @Test
-    public void returns200WithValidAddress() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAddress() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, CryptoException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 

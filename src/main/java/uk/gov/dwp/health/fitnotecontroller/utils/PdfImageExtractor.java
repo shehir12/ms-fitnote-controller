@@ -1,19 +1,19 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 public class PdfImageExtractor {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(PdfImageExtractor.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(PdfImageExtractor.class.getName());
 
     private PdfImageExtractor() {
     }

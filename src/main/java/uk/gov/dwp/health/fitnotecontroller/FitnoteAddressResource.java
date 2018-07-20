@@ -1,12 +1,12 @@
 package uk.gov.dwp.health.fitnotecontroller;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.exception.NewAddressException;
 import uk.gov.dwp.health.fitnotecontroller.utils.JsonValidator;
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -16,7 +16,7 @@ import javax.ws.rs.core.Response;
 
 @Path("/")
 public class FitnoteAddressResource {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteAddressResource.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(FitnoteAddressResource.class.getName());
     private static final String ERROR_RESPONSE = "Unable to process request";
     private JsonValidator jsonValidator;
     private ImageStorage imageStore;
@@ -39,6 +39,8 @@ public class FitnoteAddressResource {
             Address receivedAddress = jsonValidator.validateAndTranslateAddress(jsonBody);
             ImagePayload payload = imageStore.getPayload(receivedAddress.getSessionId());
             payload.setClaimantAddress(receivedAddress);
+            imageStore.updateAddressDetails(payload);
+
             serviceResponse = Response.status(HttpStatus.SC_OK).build();
 
         } catch (NewAddressException e) {

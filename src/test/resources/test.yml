@@ -5,17 +5,21 @@ server:
   adminConnectors:
   - type: http
     port: 9102
+  requestLog:
+    type: external
 
-expirytimeinmilliseconds: 150000
-frequencyofexpirytimecheckinmilliseconds: 10000
+sessionExpiryTimeInSeconds: 200
 
-imageReplayExpiryMilliseconds: 60000
+imageReplayExpirySeconds: 100
 maxAllowedImageReplay: 10
 imageHashSalt: salty
+
+redisStoreURI: redis://localhost:7000
 
 rabbitMqURI: amqp://system:manager@localhost:9105
 rabbitEventRoutingKey: incoming.submission.fn
 rabbitExchangeName: rabbit.fitnote.ex
+rabbitEncryptMessages: false
 
 rabbitMqTruststoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ts
 rabbitMqKeystoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ks
@@ -55,4 +59,4 @@ baseRightText:
   - "beginning to end"
 
 logging:
-  level: INFO
+  type: external

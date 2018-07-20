@@ -1,6 +1,7 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
@@ -9,14 +10,13 @@ import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import uk.gov.dwp.health.fitnotecontroller.exception.NewAddressException;
 import uk.gov.dwp.health.fitnotecontroller.exception.ObjectBuildException;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 import uk.gov.dwp.regex.NinoValidator;
 import uk.gov.dwp.regex.PostCodeValidator;
 
 import java.io.IOException;
 
 public class JsonValidator {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(JsonValidator.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(JsonValidator.class.getName());
     private static final String SESSION_ID_MISSING = "Session ID missing";
     private static final String MISSING_ACCEPTED_VALUED = "Missing accepted valued";
     private static final String INVALID_VALUE = "Invalid value";
@@ -84,7 +84,7 @@ public class JsonValidator {
             if (invalidString(payload.getSessionId())) {
                 throw new ImagePayloadException(SESSION_ID_IS_MANDATORY);
             }//may need better validation?
-            if ((!invalidString(payload.getMobileNumber())) && (!payload.getMobileNumber().matches("^\\+?[ 0-9]{9,15}"))) {
+            if ((!invalidString(payload.getMobileNumber())) && (!payload.getMobileNumber().matches("^\\+?[ 0-9]{11,20}"))) {
                 throw new ImagePayloadException(INVALID_MOBILE_NUMBER);
             }
         } catch (ObjectBuildException | IOException e) {

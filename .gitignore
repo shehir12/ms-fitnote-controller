@@ -16,3 +16,4 @@ src/test/resources/scripts/
 src/test/java/fitnotecontroller/utils/fitnotes/
 Dockerfile
 Jenkinsfile
+CHANGELOG.md

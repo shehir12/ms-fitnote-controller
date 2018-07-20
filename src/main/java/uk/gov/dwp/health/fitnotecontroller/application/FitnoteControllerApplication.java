@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.application;
 
+import io.lettuce.core.cluster.RedisClusterClient;
 import uk.gov.dwp.health.crypto.CryptoDataManager;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.crypto.rabbitmq.MessageEncoder;
@@ -12,27 +13,36 @@ import io.dropwizard.Application;
 import io.dropwizard.setup.Environment;
 import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
 public class FitnoteControllerApplication extends Application<FitnoteControllerConfiguration> {
+
+    @Override
+    protected void bootstrapLogging() {
+        // to prevent dropwizard using its own standard logger
+    }
 
     @Override
     public void run(FitnoteControllerConfiguration fitnoteControllerConfiguration, Environment environment) throws Exception {
 
-        final ImageStorage imageStorage = new ImageStorage(fitnoteControllerConfiguration);
-
-        CryptoDataManager kmsCrypto = null;
-        if ((fitnoteControllerConfiguration.isRabbitEncryptMessages()) && (null == fitnoteControllerConfiguration.getKmsCryptoConfig())) {
-            throw new CryptoException("RabbitEncryptMessages is TRUE.  Cannot encrypt without a valid 'kmsCryptoConfiguration' configuration item");
+        CryptoDataManager rabbitMqKmsCrypto = null;
+        if ((fitnoteControllerConfiguration.isRabbitEncryptMessages()) && (null == fitnoteControllerConfiguration.getRabbitKmsCryptoConfiguration())) {
+            throw new CryptoException("RabbitEncryptMessages is TRUE.  Cannot encrypt without a valid 'rabbitKmsCryptoConfiguration' configuration item");
 
         } else if (fitnoteControllerConfiguration.isRabbitEncryptMessages()) {
-            kmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getKmsCryptoConfig());
+            rabbitMqKmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getRabbitKmsCryptoConfiguration());
         }
 
-        final MessageEncoder cryptoMessageEncoder = new MessageEncoder(kmsCrypto);
+        CryptoDataManager redisMqKmsCrypto = null;
+        if ((fitnoteControllerConfiguration.isRedisEncryptMessages()) && (null == fitnoteControllerConfiguration.getRedisKmsCryptoConfiguration())) {
+            throw new CryptoException("RedisEncryptMessages is TRUE.  Cannot encrypt without a valid 'redisKmsCryptoConfiguration' configuration item");
 
-        final PublishSubscribe rabbitMqPublisher = new PublishSubscribe(kmsCrypto, cryptoMessageEncoder, fitnoteControllerConfiguration.getRabbitMqURI());
+        } else if (fitnoteControllerConfiguration.isRedisEncryptMessages()) {
+            redisMqKmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getRedisKmsCryptoConfiguration());
+        }
+
+        final RedisClusterClient redisClient = RedisClusterClient.create(fitnoteControllerConfiguration.getRedisStoreURI());
+        final ImageStorage imageStorage = new ImageStorage(fitnoteControllerConfiguration, redisClient, redisMqKmsCrypto);
+
+        final PublishSubscribe rabbitMqPublisher = new PublishSubscribe(new MessageEncoder(rabbitMqKmsCrypto), fitnoteControllerConfiguration.getRabbitMqURI());
         rabbitMqPublisher.setTruststoreCredentials(fitnoteControllerConfiguration.getRabbitMqTruststoreFile(), fitnoteControllerConfiguration.getRabbitMqTruststorePass());
         rabbitMqPublisher.setKeystoreCredentials(fitnoteControllerConfiguration.getRabbitMqKeystoreFile(), fitnoteControllerConfiguration.getRabbitMqKeystorePass());
 
@@ -45,15 +55,6 @@ public class FitnoteControllerApplication extends Application<FitnoteControllerC
         environment.jersey().register(confirmationResource);
         environment.jersey().register(declarationResource);
         environment.jersey().register(addressResource);
-
-        Timer expiryTime = new Timer("Session Expiry Timer");
-        TimerTask runExpiryTime = new TimerTask() {
-            @Override
-            public void run() {
-                imageStorage.clearExpiredObjects();
-            }
-        };
-        expiryTime.scheduleAtFixedRate(runExpiryTime, 5000, fitnoteControllerConfiguration.getFrequencyOfExpiryTimeInMilliSeconds());
     }
 
     public static void main(String[] args) throws Exception {

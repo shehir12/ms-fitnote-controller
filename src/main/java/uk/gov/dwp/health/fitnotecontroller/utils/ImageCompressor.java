@@ -1,10 +1,10 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImageCompressException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 
 public class ImageCompressor {
-    private static final Logger LOGGER = DwpEncodedLogger.getLogger(ImageCompressor.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ImageCompressor.class.getName());
     private boolean rejectingOversizeImages;
 
     public ImageCompressor(FitnoteControllerConfiguration config) {
@@ -65,14 +65,16 @@ public class ImageCompressor {
         jpgWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         jpgWriteParam.setCompressionQuality(compressionQuality);
 
-        ByteArrayOutputStream compressed = new ByteArrayOutputStream();
-        ImageOutputStream outputStream = ImageIO.createImageOutputStream(compressed);
-        jpgWriter.setOutput(outputStream);
+        try (ByteArrayOutputStream compressed = new ByteArrayOutputStream()) {
+            try (ImageOutputStream outputStream = ImageIO.createImageOutputStream(compressed)) {
+                jpgWriter.setOutput(outputStream);
 
-        jpgWriter.write(null, new IIOImage(image, null, null), jpgWriteParam);
-        jpgWriter.dispose();
+                jpgWriter.write(null, new IIOImage(image, null, null), jpgWriteParam);
+                jpgWriter.dispose();
+            }
 
-        return compressed.toByteArray();
+            return compressed.toByteArray();
+        }
     }
 
     private BufferedImage turnGreyscale(BufferedImage inputImage) {

@@ -121,11 +121,11 @@ public class JsonValidatorTest extends JsonValidator {
     @Test
     public void null_SessionId_On_Confirmation_Throws_Exception() {
         try {
-            validatorUnderTest.validateAndTranslateSubmission(("\"nino\":\"AA370773A\"," +
+            validatorUnderTest.validateAndTranslateSubmission(("{\"nino\":\"AA370773A\"," +
                     "\"mobileNumber\":\"0113999999\"}"));
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
-            assertTrue("Expecting an ImagePayloadException", e.getMessage().contains("JsonMappingException"));
+            assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
             e.printStackTrace();
         }
     }
@@ -193,7 +193,7 @@ public class JsonValidatorTest extends JsonValidator {
     @Test
     public void json_On_Mobile_Confirmation_Is_Valid() throws ImagePayloadException {
         String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"0113999999\"}";
+        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"07869123456\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
         assertEquals(imagePayload.getSessionId(), SessionID);
     }
@@ -201,7 +201,7 @@ public class JsonValidatorTest extends JsonValidator {
     @Test
     public void json_On_Mobile_Confirmation_Is_Valid_With_Leading_Plus() throws ImagePayloadException {
         String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"+0113999999\"}";
+        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"+44113999999\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
         assertEquals(imagePayload.getSessionId(), SessionID);
     }
@@ -220,9 +220,9 @@ public class JsonValidatorTest extends JsonValidator {
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Valid_With_9_Digits() throws ImagePayloadException {
+    public void json_On_Mobile_Confirmation_Is_Valid_With_11_Digits() throws ImagePayloadException {
         String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"123456789\"}";
+        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"12345678901\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
         assertEquals(imagePayload.getSessionId(), SessionID);
     }
@@ -236,9 +236,9 @@ public class JsonValidatorTest extends JsonValidator {
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Invalid_With_16_Digits() {
+    public void json_On_Mobile_Confirmation_Is_Invalid_With_21_Digits() {
         String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"1111111111111111\"}";
+        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"111111111111111111111\"}";
         try {
             validatorUnderTest.validateAndTranslateMobileConfirmation(json);
             fail("should have thrown invalid mobile number error");

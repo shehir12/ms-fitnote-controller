@@ -83,14 +83,14 @@ Feature: Fitnote submit
       Then I receive a HTTP response of 400
 
   @FitnoteSubmitTest
-  Scenario: Submit a pdf scanned fitnote is a SUCCESS at 300dpi colour
+  Scenario: Submit a pdf scanned fitnote is a FAILED_IMG_OCR_PARTIAL at 300dpi colour
     Given the http client is up
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | image     | /FullPage_Portrait.pdf |
       | sessionId | "46"             |
     Then I receive a HTTP response of 202
     And I hit the service url "http://localhost:9101/imagestatus" with session id "46" getting return status 200 and finally containing the following json body
-      | fitnoteStatus | SUCCEEDED |
+      | fitnoteStatus | FAILED_IMG_OCR_PARTIAL |
 
   @FitnoteSubmitTest
   Scenario: Submit small fitnote

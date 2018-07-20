@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
+import org.slf4j.LoggerFactory;
+import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.BarcodeContents;
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
@@ -21,7 +23,6 @@ import uk.gov.dwp.health.fitnotecontroller.utils.PdfImageExtractor;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.imageio.ImageIO;
 import javax.ws.rs.GET;
@@ -37,7 +38,7 @@ import java.io.IOException;
 
 @Path("/")
 public class FitnoteSubmitResource {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteSubmitResource.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(FitnoteSubmitResource.class.getName());
     private static final String LOG_STANDARD_REGEX = "[\\u0000-\\u001f]";
     private static final String ERROR_MSG = "Unable to process request";
     private FitnoteControllerConfiguration controllerConfiguration;
@@ -61,7 +62,7 @@ public class FitnoteSubmitResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/imagestatus")
-    public Response checkFitnote(@QueryParam("sessionId") Optional<String> sessionId) throws ImagePayloadException {
+    public Response checkFitnote(@QueryParam("sessionId") Optional<String> sessionId) throws ImagePayloadException, IOException, CryptoException {
         Response response;
         if (sessionId.isPresent()) {
             String formatted = sessionId.get().replaceAll(LOG_STANDARD_REGEX, "");
@@ -90,7 +91,7 @@ public class FitnoteSubmitResource {
                 ImagePayload storedPayload = imageStorage.getPayload(incomingPayload.getSessionId());
                 storedPayload.setFitnoteCheckStatus(incomingPayload.getFitnoteCheckStatus());
                 storedPayload.setImage(incomingPayload.getImage());
-                imageStorage.logStorageStatistics();
+                imageStorage.updateImageDetails(storedPayload);
 
                 response = createResponseOf(HttpStatus.SC_ACCEPTED, createSessionOnlyResponseFrom(incomingPayload));
                 LOG.debug("Json Validated correctly");
@@ -100,9 +101,9 @@ public class FitnoteSubmitResource {
                 response = createResponseOf(HttpStatus.SC_SERVICE_UNAVAILABLE, ERROR_MSG);
             }
 
-        } catch (ImagePayloadException | ImageHashException e) {
+        } catch (ImagePayloadException | ImageHashException | CryptoException e) {
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
-            LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
+            formatAndLogError(e.getClass().getName(), e.getMessage());
             LOG.debug(ERROR_MSG, e);
         } catch (IOException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
@@ -126,6 +127,7 @@ public class FitnoteSubmitResource {
                 ImagePayload storedPayload = imageStorage.getPayload(incomingPayload.getSessionId());
                 storedPayload.setBarcodeCheckStatus(incomingPayload.getBarcodeCheckStatus());
                 storedPayload.setBarcodeImage(incomingPayload.getBarcodeImage());
+                imageStorage.updateQrCodeDetails(storedPayload);
 
                 response = createResponseOf(HttpStatus.SC_ACCEPTED, createSessionOnlyResponseFrom(incomingPayload));
                 LOG.debug("Json validated correctly");
@@ -139,11 +141,16 @@ public class FitnoteSubmitResource {
             response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
             LOG.error("ImagePayloadException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
-        } catch (JsonProcessingException e) {
+        } catch (CryptoException e) {
+            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
+            LOG.error("CryptoException :: {}", e.getMessage());
+            LOG.debug(ERROR_MSG, e);
+        } catch (IOException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
             LOG.error("JsonProcessingException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
+
         return response;
     }
 
@@ -157,8 +164,10 @@ public class FitnoteSubmitResource {
 
                 decodeBarcodeContents(payload);
 
-            } catch (ImagePayloadException | IOException | OutOfMemoryError e) {
+            } catch (ImagePayloadException | IOException | OutOfMemoryError | CryptoException e) {
                 payload.setBarcodeCheckStatus(ImagePayload.Status.FAILED_ERROR);
+                payload.setBarcodeImage(null);
+
                 LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
                 LOG.debug(e.getClass().getName(), e);
             }
@@ -166,18 +175,26 @@ public class FitnoteSubmitResource {
         }).start();
     }
 
-    private void decodeBarcodeContents(ImagePayload payload) throws IOException {
+    private void formatAndLogError(String className, String message) {
+        LOG.error("{} {}", className, message);
+    }
+
+    private void decodeBarcodeContents(ImagePayload payload) throws IOException, ImagePayloadException, CryptoException {
         LOG.info("Attempting to decode Barcode Code");
         BarcodeContents barcodeContents = new BarcodeAnalyser(payload.getBarcodeImage()).decodeBarcodeContents();
 
         if (barcodeContents == null) {
             LOG.info("Unable to decode Barcode code");
             payload.setBarcodeCheckStatus(ImagePayload.Status.FAILED_IMG_BARCODE);
+            payload.setBarcodeImage(null);
+
         } else {
             LOG.info("Barcode code successfully decoded");
             payload.setBarcodeCheckStatus(ImagePayload.Status.PASS_IMG_BARCODE);
             payload.setBarcodeCheckStatus(ImagePayload.Status.SUCCEEDED);
         }
+
+        imageStorage.updateQrCodeDetails(payload);
     }
 
     private void checkAsynchronously(ImagePayload payload) {
@@ -185,18 +202,31 @@ public class FitnoteSubmitResource {
         new Thread(() -> {
             try {
                 if (!validateAndOcrImageFromInputTypes(payload)) {
+                    imageStorage.updateImageDetails(payload);
                     return;
                 }
 
-                byte[] compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))), controllerConfiguration.getTargetImageSizeKB(), controllerConfiguration.isGreyScale());
+                byte[] compressedImage;
+                try (ByteArrayInputStream imageStream = new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))) {
+                    compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(imageStream), controllerConfiguration.getTargetImageSizeKB(), controllerConfiguration.isGreyScale());
+                }
                 validateCompressedImage(compressedImage, payload, false);
+                imageStorage.updateImageDetails(payload);
 
             } catch (Exception e) {
                 payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_ERROR);
                 payload.setImage(null);
 
-                LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
+                formatAndLogError(e.getClass().getName(), e.getMessage());
                 LOG.debug(e.getClass().getName(), e);
+
+                try {
+                    imageStorage.updateImageDetails(payload);
+
+                } catch (ImagePayloadException | IOException | CryptoException e1) {
+                    formatAndLogError(e1.getClass().getName(), e1.getMessage());
+                    LOG.debug(e1.getClass().getName(), e1);
+                }
             }
         }).start();
     }
@@ -227,9 +257,11 @@ public class FitnoteSubmitResource {
 
             byte[] pdfImage = PdfImageExtractor.extractImage(Base64.decodeBase64(payload.getImage()), controllerConfiguration.getPdfScanDPI());
             if (pdfImage != null) {
-                if (validateLandscapeImage(payload, ImageIO.read(new ByteArrayInputStream(pdfImage)))) {
-                    payload.setImage(Base64.encodeBase64String(pdfImage));
-                    validationStatus = ocrImage(payload);
+                try (ByteArrayInputStream pdfStream = new ByteArrayInputStream(pdfImage)) {
+                    if (validateLandscapeImage(payload, ImageIO.read(pdfStream))) {
+                        payload.setImage(Base64.encodeBase64String(pdfImage));
+                        validationStatus = ocrImage(payload);
+                    }
                 }
 
             } else {
@@ -245,7 +277,10 @@ public class FitnoteSubmitResource {
             throw new ImagePayloadException("The encoded string is null.  Cannot be transformed to an image");
         }
 
-        BufferedImage imageBuf = ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage())));
+        BufferedImage imageBuf;
+        try (ByteArrayInputStream imageStream = new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))) {
+            imageBuf = ImageIO.read(imageStream);
+        }
 
         if (imageBuf == null) {
             throw new ImageTransformException("The encoded string could not be transformed to a BufferedImage");
@@ -303,7 +338,11 @@ public class FitnoteSubmitResource {
             ocrStatus = true;
 
         } else {
-            byte[] compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))), controllerConfiguration.getScanTargetImageSizeKb(), false);
+            byte[] compressedImage;
+            try (ByteArrayInputStream imageStream = new ByteArrayInputStream(Base64.decodeBase64(payload.getImage()))) {
+                compressedImage = imageCompressor.compressBufferedImage(ImageIO.read(imageStream), controllerConfiguration.getScanTargetImageSizeKb(), false);
+            }
+
             if (validateCompressedImage(compressedImage, payload, true)) {
                 ExpectedFitnoteFormat.Status imageStatus = ocrChecker.imageContainsReadableText(payload);
                 if (imageStatus.equals(ExpectedFitnoteFormat.Status.SUCCESS)) {
@@ -314,7 +353,6 @@ public class FitnoteSubmitResource {
                     payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR_PARTIAL);
                     payload.setImage(null);
 
-                    LOG.warn("Unable to OCR the fitnote");
                 } else if ((imageStatus.equals(ExpectedFitnoteFormat.Status.FAILED)) || (imageStatus.equals(ExpectedFitnoteFormat.Status.INITIALISED))) {
                     payload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_OCR);
                     payload.setImage(null);

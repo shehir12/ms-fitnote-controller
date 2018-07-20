@@ -1,13 +1,14 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
+import org.slf4j.LoggerFactory;
 
 public class MemoryChecker {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(MemoryChecker.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(MemoryChecker.class.getName());
     private static final long MEGABYTE = 1024L * 1024L;
 
     private MemoryChecker() {
+        // prevent instantiation
     }
 
     public static boolean hasEnoughMemoryForRequest(Runtime javaRunTime, int requiredMemoryMb) {

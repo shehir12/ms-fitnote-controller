@@ -11,12 +11,12 @@ import com.google.zxing.common.DetectorResult;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.datamatrix.decoder.Decoder;
 import com.google.zxing.datamatrix.detector.Detector;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.domain.BarcodeContents;
 import uk.gov.dwp.health.fitnotecontroller.exception.QRExtractionException;
 import uk.gov.dwp.health.fitnotecontroller.utils.ImageUtils;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -24,7 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class BarcodeAnalyser {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(BarcodeAnalyser.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BarcodeAnalyser.class.getName());
     private BufferedImage fitnoteImage;
 
     public BarcodeAnalyser(String fullPageImage) throws IOException {

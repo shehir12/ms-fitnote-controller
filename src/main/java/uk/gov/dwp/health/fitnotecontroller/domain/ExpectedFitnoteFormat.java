@@ -1,10 +1,10 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.exception.FuzzyStringMatchException;
 import uk.gov.dwp.health.fitnotecontroller.utils.FuzzyStringMatch;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import java.awt.image.BufferedImage;
 import java.util.EnumMap;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ExpectedFitnoteFormat {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(ExpectedFitnoteFormat.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ExpectedFitnoteFormat.class.getName());
 
     public enum StringLocation {
         TOP_LEFT,

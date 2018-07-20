@@ -26,16 +26,12 @@ public class FitnoteControllerConfiguration extends Configuration {
     private SealedObject rabbitMqKeystorePass;
 
     @NotNull
-    @JsonProperty("expirytimeinmilliseconds")
-    private long expiryTimeInMilliSeconds;
+    @JsonProperty("sessionExpiryTimeInSeconds")
+    private long sessionExpiryTimeInSeconds;
 
     @NotNull
-    @JsonProperty("frequencyofexpirytimecheckinmilliseconds")
-    private long frequencyOfExpiryTimeInMilliSeconds;
-
-    @NotNull
-    @JsonProperty("imageReplayExpiryMilliseconds")
-    private int imageReplayExpiryMilliseconds;
+    @JsonProperty("imageReplayExpirySeconds")
+    private long imageReplayExpirySeconds;
 
     @JsonProperty("maxAllowedImageReplay")
     private int maxAllowedImageReplay = 10;
@@ -43,6 +39,10 @@ public class FitnoteControllerConfiguration extends Configuration {
     @NotNull
     @JsonProperty("imageHashSalt")
     private SealedObject imageHashSalt;
+
+    @NotNull
+    @JsonProperty("redisStoreURI")
+    private String redisStoreURI;
 
     @JsonProperty("ocrChecksEnabled")
     private boolean ocrChecksEnabled = true;
@@ -122,16 +122,15 @@ public class FitnoteControllerConfiguration extends Configuration {
     @JsonProperty("rabbitEncryptMessages")
     private boolean rabbitEncryptMessages;
 
-    @JsonProperty("kmsCryptoConfiguration")
-    private CryptoConfig kmsCryptoConfig;
+    @NotNull
+    @JsonProperty("redisEncryptMessages")
+    private boolean redisEncryptMessages;
 
-    public long getExpiryTimeInMilliSeconds() {
-        return expiryTimeInMilliSeconds;
-    }
+    @JsonProperty("rabbitKmsCryptoConfiguration")
+    private CryptoConfig rabbitKmsCryptoConfiguration;
 
-    public long getFrequencyOfExpiryTimeInMilliSeconds() {
-        return frequencyOfExpiryTimeInMilliSeconds;
-    }
+    @JsonProperty("redisKmsCryptoConfiguration")
+    private CryptoConfig redisKmsCryptoConfiguration;
 
     public boolean isOcrChecksEnabled() {
         return ocrChecksEnabled;
@@ -225,8 +224,8 @@ public class FitnoteControllerConfiguration extends Configuration {
         return rabbitEncryptMessages;
     }
 
-    public CryptoConfig getKmsCryptoConfig() {
-        return kmsCryptoConfig;
+    public CryptoConfig getRabbitKmsCryptoConfiguration() {
+        return rabbitKmsCryptoConfiguration;
     }
 
     public String getRabbitMqTruststoreFile() {
@@ -257,15 +256,31 @@ public class FitnoteControllerConfiguration extends Configuration {
         return maxAllowedImageReplay;
     }
 
-    public int getImageReplayExpiryMilliseconds() {
-        return imageReplayExpiryMilliseconds;
-    }
-
     public String getImageHashSalt() {
         return cipher.revealString(imageHashSalt);
     }
 
     public void setImageHashSalt(String imageHashSalt) {
         this.imageHashSalt = cipher.sealString(imageHashSalt);
+    }
+
+    public String getRedisStoreURI() {
+        return redisStoreURI;
+    }
+
+    public CryptoConfig getRedisKmsCryptoConfiguration() {
+        return redisKmsCryptoConfiguration;
+    }
+
+    public boolean isRedisEncryptMessages() {
+        return redisEncryptMessages;
+    }
+
+    public long getSessionExpiryTimeInSeconds() {
+        return sessionExpiryTimeInSeconds;
+    }
+
+    public long getImageReplayExpirySeconds() {
+        return imageReplayExpirySeconds;
     }
 }

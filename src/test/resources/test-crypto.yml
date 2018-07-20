@@ -5,20 +5,28 @@ server:
   adminConnectors:
   - type: http
     port: 9102
+  requestLog:
+    type: external
 
-expirytimeinmilliseconds: 150000
-frequencyofexpirytimecheckinmilliseconds: 10000
+sessionExpiryTimeInSeconds: 200
 
-imageReplayExpiryMilliseconds: 60000
+imageReplayExpirySeconds: 100
 maxAllowedImageReplay: 10
 imageHashSalt: salty
+
+redisStoreURI: redis://localhost:7000
+redisEncryptMessages: true
+
+redisKmsCryptoConfiguration:
+  kmsEndpointOverride: http://localhost:5678
+  dataKeyRequestId: test_request_id
 
 rabbitMqURI: amqp://system:manager@localhost:9105
 rabbitEventRoutingKey: incoming.submission.fn
 rabbitExchangeName: rabbit.fitnote.ex
 rabbitEncryptMessages: true
 
-kmsCryptoConfiguration:
+rabbitKmsCryptoConfiguration:
   kmsEndpointOverride: http://localhost:5678
   dataKeyRequestId: test_request_id
 
@@ -60,4 +68,4 @@ baseRightText:
   - "beginning to end"
 
 logging:
-  level: INFO
+  type: external

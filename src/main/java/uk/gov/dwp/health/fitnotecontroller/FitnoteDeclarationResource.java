@@ -2,10 +2,9 @@ package uk.gov.dwp.health.fitnotecontroller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.crypto.rabbitmq.exceptions.EventsMessageException;
-import uk.gov.dwp.health.crypto.rabbitmq.items.event.EventMessage;
-import uk.gov.dwp.health.crypto.rabbitmq.items.event.MetaData;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
 import uk.gov.dwp.health.fitnotecontroller.domain.FitnoteMetadata;
@@ -18,7 +17,8 @@ import org.slf4j.Logger;
 import uk.gov.dwp.components.drs.DrsPayloadBuilder;
 import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
 import uk.gov.dwp.health.rabbitmq.exceptions.EventsManagerException;
-import uk.gov.dwp.logging.DwpEncodedLogger;
+import uk.gov.dwp.health.rabbitmq.items.event.EventMessage;
+import uk.gov.dwp.health.rabbitmq.items.event.MetaData;
 import uk.gov.dwp.tls.TLSGeneralException;
 
 import javax.ws.rs.POST;
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeoutException;
 
 @Path("/")
 public class FitnoteDeclarationResource {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(FitnoteDeclarationResource.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(FitnoteDeclarationResource.class.getName());
     private static final String ERROR_MSG = "Unable to process request";
     private FitnoteControllerConfiguration config;
     private PublishSubscribe rabbitMqPublish;
@@ -117,6 +117,13 @@ public class FitnoteDeclarationResource {
             LOG.debug(e.getClass().getName(), e);
 
             return Response.status(HttpStatus.SC_BAD_REQUEST).entity(ERROR_MSG).build();
+
+        } catch (CryptoException e) {
+            LOG.error("CryptoException exception :: {}", e.getMessage());
+            LOG.debug(e.getClass().getName(), e);
+
+            return Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_MSG).build();
+
         } catch (ImagePayloadException e) {
             LOG.error("Image payload exception :: {}", e.getMessage());
             LOG.debug(e.getClass().getName(), e);

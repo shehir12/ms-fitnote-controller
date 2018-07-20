@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
@@ -9,7 +10,6 @@ import org.slf4j.Logger;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.lept;
 import org.bytedeco.javacpp.tesseract;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -21,12 +21,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.bytedeco.javacpp.lept.pixDestroy;
 
 public class OcrChecker {
     private static final String TESSERACT_FOLDER_ERROR = "the tessdata configuration file could not be found in %s";
-    private static final Logger LOG = DwpEncodedLogger.getLogger(OcrChecker.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(OcrChecker.class.getName());
     private final FitnoteControllerConfiguration configuration;
 
     public OcrChecker(FitnoteControllerConfiguration config) {
@@ -39,19 +40,28 @@ public class OcrChecker {
         long startTime = System.currentTimeMillis();
         ExpectedFitnoteFormat.Status imageStatus;
 
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(decode);
-        BufferedImage read = ImageIO.read(inputStream);
+        BufferedImage read;
+
+        ExpectedFitnoteFormat readableImageFormat;
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(decode)) {
+            read = ImageIO.read(inputStream);
+        }
+
         LOG.debug("Image Base64 decoded from string");
         LOG.info("Start OCR checks :: SID: {}", sessionID);
 
-        ExpectedFitnoteFormat readableImageFormat = tryImageWithRotations(read, sessionID);
+        readableImageFormat = tryImageWithRotations(read, sessionID);
         if (readableImageFormat == null) {
             imageStatus = ExpectedFitnoteFormat.Status.FAILED;
 
         } else if (readableImageFormat.getFinalImage() != null) {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            ImageIO.write(readableImageFormat.getFinalImage(), "jpg", outputStream);
-            String readableImageString = Base64.encodeBase64String(outputStream.toByteArray());
+            String readableImageString;
+
+            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                ImageIO.write(readableImageFormat.getFinalImage(), "jpg", outputStream);
+                readableImageString = Base64.encodeBase64String(outputStream.toByteArray());
+            }
+
             imagePayload.setImage(readableImageString);
             imageStatus = readableImageFormat.getStatus();
 
@@ -96,7 +106,7 @@ public class OcrChecker {
     }
 
     private synchronized ExpectedFitnoteFormat tryImageWithRotations(BufferedImage originalImage, String sessionID) throws IOException {
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         int[] rotationAngles = {0, 180, 90, 270};
 
         CompletionService<ExpectedFitnoteFormat> threadStack = new ExecutorCompletionService<>(executorService);
@@ -105,7 +115,7 @@ public class OcrChecker {
 
             for (int angle : rotationAngles) {
                 threadStack.submit(buildCallable(originalImage, sessionID, angle, threadPriority));
-                threadPriority = threadPriority -3;
+                threadPriority = threadPriority - 3;
             }
 
             for (int stack = 0; stack < rotationAngles.length; stack++) {
@@ -125,7 +135,18 @@ public class OcrChecker {
             }
 
         } finally {
-            executorService.shutdownNow();
+            long startTime = System.currentTimeMillis();
+            try {
+                executorService.shutdownNow();
+                executorService.awaitTermination(1, TimeUnit.SECONDS);
+
+            } catch (InterruptedException e) {
+                LOG.error("{} :: {}", e.getClass().getName(), e.getMessage());
+                LOG.debug(e.getClass().getName(), e);
+                Thread.currentThread().interrupt();
+            }
+
+            LOG.info("Threads closed from OCR in {} ms", System.currentTimeMillis() - startTime);
         }
 
         LOG.debug("SID: {} Image Failed OCR", sessionID);
@@ -240,11 +261,11 @@ public class OcrChecker {
     private void ocrApplyImageFilters(BufferedImage subImage, tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, String location, int targetPercentage, int rotation) throws IOException {
         BufferedImage workingImage = null;
         int filterApplications = 0;
-        int higPercentage = 0;
+        int highPercentage = 0;
         String filter = "";
 
         LOG.info("*** START {} CHECKS, AIMING FOR {} PERCENTAGE @ {} ROTATION ***", location, targetPercentage, rotation);
-        while ((higPercentage < targetPercentage) && (filterApplications < 4)) {
+        while ((highPercentage < targetPercentage) && (filterApplications < 4)) {
             switch (filterApplications) {
                 case 0:
                     workingImage = ImageUtils.normaliseBrightness(subImage, configuration.getTargetBrightness(), configuration.getBorderLossPercentage());
@@ -272,24 +293,24 @@ public class OcrChecker {
 
                 if ("TL".equalsIgnoreCase(location)) {
                     fitnoteFormat.scanTopLeft(ocrScanSubImage(workingImage, ocr));
-                    higPercentage = fitnoteFormat.getTopLeftPercentage();
+                    highPercentage = fitnoteFormat.getTopLeftPercentage();
 
                 } else if ("TR".equalsIgnoreCase(location)) {
                     fitnoteFormat.scanTopRight(ocrScanSubImage(workingImage, ocr));
-                    higPercentage = fitnoteFormat.getTopRightPercentage();
+                    highPercentage = fitnoteFormat.getTopRightPercentage();
 
                 } else if ("BL".equalsIgnoreCase(location)) {
                     fitnoteFormat.scanBaseLeft(ocrScanSubImage(workingImage, ocr));
-                    higPercentage = fitnoteFormat.getBaseLeftPercentage();
+                    highPercentage = fitnoteFormat.getBaseLeftPercentage();
 
                 } else {
                     fitnoteFormat.scanBaseRight(ocrScanSubImage(workingImage, ocr));
-                    higPercentage = fitnoteFormat.getBaseRightPercentage();
+                    highPercentage = fitnoteFormat.getBaseRightPercentage();
                 }
             }
 
-            if ((filterApplications == 1) && (higPercentage <= 0)) {
-                LOG.info("Abandoned time-costly checks after 2 filters with zero percentage OCR for location {} at rotation {}", location, rotation);
+            if ((filterApplications == 1) && (highPercentage < configuration.getDiagonalTarget())) {
+                LOG.info("Abandoned time-costly checks after 2 filters with < {} percentage OCR for location {} at rotation {}", configuration.getDiagonalTarget(), location, rotation);
                 return;
             }
 

@@ -1,32 +1,61 @@
 package uk.gov.dwp.health.fitnotecontroller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
+import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
+import org.slf4j.LoggerFactory;
+import uk.gov.dwp.health.crypto.CryptoDataManager;
+import uk.gov.dwp.health.crypto.CryptoMessage;
+import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImageHashStore;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImageHashException;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
 
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Base64;
 
 public class ImageStorage {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(ImageStorage.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ImageStorage.class.getName());
     private static final String NULL_PAYLOAD_MSG = "Null payload object rejected";
-    private static final long MEGABYTE = 1024L * 1024L;
-
-    private Map<String, ImageHashStore> imageHashStack = new ConcurrentHashMap<>();
-    private Map<String, ImagePayload> images = new ConcurrentHashMap<>();
+    private StatefulRedisClusterConnection<String, String> redisConnection = null;
+    private static final String IMAGE_HASHSTORE_NAME = "fitnote:image-hashstore:";
+    private static final String IMAGE_PAYLOAD_NAME = "fitnote:image-payload:";
     private final FitnoteControllerConfiguration configuration;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final CryptoDataManager cryptoDataManager;
+    private RedisClusterClient redisClient;
 
-    public ImageStorage(FitnoteControllerConfiguration configuration) {
+    public ImageStorage(FitnoteControllerConfiguration configuration, RedisClusterClient redis, CryptoDataManager cryptoDataManager) {
+        this.cryptoDataManager = cryptoDataManager;
         this.configuration = configuration;
+        this.redisClient = redis;
     }
 
-    public ImagePayload getPayload(String sessionId) throws ImagePayloadException {
+    private synchronized RedisAdvancedClusterCommands<String, String> getSynchronousCommands() {
+        if ((redisConnection == null) || (!redisConnection.isOpen())) {
+            redisConnection = redisClient.connect();
+        }
+
+        return redisConnection.sync();
+    }
+
+    private String encode(ImagePayload imagePayload) throws CryptoException, JsonProcessingException {
+        String serialisedClass = mapper.writeValueAsString(imagePayload);
+        return configuration.isRedisEncryptMessages() ? mapper.writeValueAsString(cryptoDataManager.encrypt(serialisedClass)) : serialisedClass;
+    }
+
+    private String decode(String redisValue) throws IOException, CryptoException {
+        return configuration.isRedisEncryptMessages() ? cryptoDataManager.decrypt(mapper.readValue(redisValue, CryptoMessage.class)) : redisValue;
+    }
+
+    public ImagePayload getPayload(String sessionId) throws ImagePayloadException, IOException, CryptoException {
         if (sessionId == null) {
             throw new ImagePayloadException("Null sessionId rejected");
         }
@@ -34,18 +63,19 @@ public class ImageStorage {
         synchronized (this) {
             ImagePayload payloadItem;
 
-            if (images.containsKey(sessionId)) {
-                payloadItem = images.get(sessionId);
+            if (getSynchronousCommands().exists(IMAGE_PAYLOAD_NAME + sessionId) > 0) {
+                payloadItem = mapper.readValue(decode(getSynchronousCommands().get(IMAGE_PAYLOAD_NAME + sessionId)), ImagePayload.class);
 
             } else {
                 LOG.debug("Session id does not exist, created entry for {}", sessionId);
                 payloadItem = new ImagePayload();
 
-                payloadItem.setExpiryTime(getCurrentTimeMillis() + configuration.getExpiryTimeInMilliSeconds());
+                payloadItem.setExpiryTime(getCurrentTimeMillis() + (configuration.getSessionExpiryTimeInSeconds() * 1000));
                 payloadItem.setBarcodeCheckStatus(ImagePayload.Status.CREATED);
                 payloadItem.setFitnoteCheckStatus(ImagePayload.Status.CREATED);
                 payloadItem.setSessionId(sessionId);
-                images.put(sessionId, payloadItem);
+
+                setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + sessionId, encode(payloadItem));
             }
 
             return payloadItem;
@@ -63,88 +93,108 @@ public class ImageStorage {
         try {
             MessageDigest hash = MessageDigest.getInstance("SHA-256");
             hash.update(configuration.getImageHashSalt().getBytes());
+            ImageHashStore hashStoreItem;
 
-            String hashImage = new String(hash.digest(sourceImage.getBytes()));
+            String hashImage = Base64.getEncoder().encodeToString(hash.digest(sourceImage.getBytes()));
 
-            ImageHashStore hashStoreItem = imageHashStack.get(hashImage);
-            if (hashStoreItem == null) {
-                LOG.debug("new image received, hash value stored to expire in {} milliseconds", configuration.getImageReplayExpiryMilliseconds());
-                hashStoreItem = new ImageHashStore(getCurrentTimeMillis() + configuration.getImageReplayExpiryMilliseconds());
-                imageHashStack.put(hashImage, hashStoreItem);
+            if (getSynchronousCommands().exists(IMAGE_HASHSTORE_NAME + hashImage) > 0) {
+                hashStoreItem = mapper.readValue(getSynchronousCommands().get(IMAGE_HASHSTORE_NAME + hashImage), ImageHashStore.class);
+
+            } else {
+                LOG.debug("new image received, hash value will expire in {} seconds", configuration.getImageReplayExpirySeconds());
+                hashStoreItem = new ImageHashStore();
+                hashStoreItem.initCreateDateTime();
             }
 
             hashStoreItem.updateLastSubmitted();
             hashStoreItem.incSubmissionCount();
+
+            LOG.info("updating image hash for to redis");
+            getSynchronousCommands().set(IMAGE_HASHSTORE_NAME + hashImage, mapper.writeValueAsString(hashStoreItem));
+            getSynchronousCommands().expire(IMAGE_HASHSTORE_NAME + hashImage, configuration.getImageReplayExpirySeconds());
 
             if (hashStoreItem.getSubmissionCount() > configuration.getMaxAllowedImageReplay()) {
                 LOG.info("Image hash has been replayed {} times since creation ({}).  Potential DDOS replay, aborting submission", hashStoreItem.getSubmissionCount(), hashStoreItem.getCreateDateTime());
                 throw new ImageHashException("Image replay limited exceeded, rejecting");
             }
 
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | IOException e) {
             LOG.debug(e.getClass().getName(), e);
             LOG.error(e.getMessage());
         }
     }
 
-    public ImagePayload updateNinoDetails(ImagePayload payload) throws ImagePayloadException {
+    public void updateNinoDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
         if (payload == null) {
             throw new ImagePayloadException(NULL_PAYLOAD_MSG);
         }
 
         ImagePayload payloadToChange = getPayload(payload.getSessionId());
         LOG.debug("Updating Nino for session id {}", payload.getSessionId());
-
         payloadToChange.setNino(payload.getNino());
-        return payloadToChange;
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
+
     }
 
-    public ImagePayload updateMobileDetails(ImagePayload payload) throws ImagePayloadException {
+    public void updateMobileDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
         if (payload == null) {
             throw new ImagePayloadException(NULL_PAYLOAD_MSG);
         }
 
         ImagePayload payloadToChange = getPayload(payload.getSessionId());
         LOG.debug("Updating Nino for session id {}", payload.getSessionId());
-
         payloadToChange.setMobileNumber(payload.getMobileNumber());
-        return payloadToChange;
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
     }
 
-    public void clearExpiredObjects() {
-        int imageStorageBytes = 0;
-        int hashStorageBytes = 0;
-
-        for (Map.Entry<String, ImagePayload> imageObject : images.entrySet()) {
-            if (images.get(imageObject.getValue().getSessionId()).getImage() != null) {
-                imageStorageBytes += images.get(imageObject.getValue().getSessionId()).getRawImageSize();
-            }
-
-            long sessionExpiryTime = images.get(imageObject.getValue().getSessionId()).getExpiryTime();
-
-            if (sessionExpiryTime < System.currentTimeMillis()) {
-                LOG.info("Clearing expired session {}", imageObject.getValue().getSessionId());
-                clearSession(imageObject.getValue().getSessionId());
-            }
-        }
-        for (Map.Entry<String, ImageHashStore> imageHashObject : imageHashStack.entrySet()) {
-            hashStorageBytes += imageHashObject.getKey().getBytes().length;
-
-            if (imageHashObject.getValue().getExpiryTime() < System.currentTimeMillis()) {
-                LOG.info("Clearing expired hashed image created @ {}", imageHashObject.getValue().getCreateDateTime());
-                imageHashStack.remove(imageHashObject.getKey());
-            }
+    public void updateImageDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
+        if (payload == null) {
+            throw new ImagePayloadException(NULL_PAYLOAD_MSG);
         }
 
-        LOG.info("STATS :: image storage {} item using {} bytes, image hash storage {} items using {} bytes", images.size(), imageStorageBytes, imageHashStack.size(), hashStorageBytes);
+        ImagePayload payloadToChange = getPayload(payload.getSessionId());
+        LOG.debug("Updating image data for session id {}", payload.getSessionId());
+        payloadToChange.setFitnoteCheckStatus(payload.getFitnoteCheckStatus());
+        payloadToChange.setImage(payload.getImage());
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
     }
 
-    public void logStorageStatistics() {
-        LOG.info("Total existing ImagePayload sessions = {}, ImageHashStore sessions = {}", images.size(), imageHashStack.size());
+    public void updateQrCodeDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
+        if (payload == null) {
+            throw new ImagePayloadException(NULL_PAYLOAD_MSG);
+        }
+
+        ImagePayload payloadToChange = getPayload(payload.getSessionId());
+        LOG.debug("Updating qrcode data for session id {}", payload.getSessionId());
+        payloadToChange.setBarcodeCheckStatus(payload.getBarcodeCheckStatus());
+        payloadToChange.setBarcodeImage(payload.getBarcodeImage());
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
+    }
+
+    public void updateAddressDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
+        if (payload == null) {
+            throw new ImagePayloadException(NULL_PAYLOAD_MSG);
+        }
+
+        ImagePayload payloadToChange = getPayload(payload.getSessionId());
+        LOG.debug("Updating address data for session id {}", payload.getSessionId());
+        payloadToChange.setClaimantAddress(payload.getClaimantAddress());
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
     }
 
     public void clearSession(String sessionId) {
-        images.remove(sessionId);
+        LOG.info("Removing sessionId {} from redis store", sessionId);
+        getSynchronousCommands().del(IMAGE_PAYLOAD_NAME + sessionId);
+    }
+
+    private void setAndUpdateImagePayloadItem(String compositeKey, String contents) {
+        getSynchronousCommands().set(compositeKey, contents);
+        getSynchronousCommands().expire(compositeKey, configuration.getSessionExpiryTimeInSeconds());
     }
 
     protected long getCurrentTimeMillis() {

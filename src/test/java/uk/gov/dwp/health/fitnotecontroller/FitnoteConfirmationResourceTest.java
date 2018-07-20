@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller;
 
+import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteConfirmationResource;
 import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
@@ -40,16 +41,13 @@ public class FitnoteConfirmationResourceTest {
     }
 
     @Test
-    public void sendNinoToServiceRespondsWith200ForKnownSessionId() throws IOException, ImagePayloadException {
+    public void sendNinoToServiceRespondsWith200ForKnownSessionId() throws IOException, ImagePayloadException, CryptoException {
         String sessionId = "123456";
         String nino = "AA370773A";
         String json = buildNinoJsonPayload(sessionId, nino);
         ImagePayload newPayload = buildNinoPayload(sessionId, nino);
 
-        ImagePayload originalImagePayload = new ImagePayload();
-        originalImagePayload.setSessionId(sessionId);
         when(jsonValidator.validateAndTranslateConfirmation(json)).thenReturn(newPayload);
-        when(imageStore.updateNinoDetails(newPayload)).thenReturn(originalImagePayload);
 
         Response response = resourceUnderTest.confirmFitnote(json);
 
@@ -62,16 +60,13 @@ public class FitnoteConfirmationResourceTest {
     }
 
     @Test
-    public void sendMobileToServiceRespondsWith200ForKnownSessionId() throws IOException, ImagePayloadException {
+    public void sendMobileToServiceRespondsWith200ForKnownSessionId() throws IOException, ImagePayloadException, CryptoException {
         String sessionId = "123456";
         String mobileNumber = "0113999999";
         String json = buildMobileJsonPayload(sessionId, mobileNumber);
         ImagePayload newPayload = buildMobilePayload(sessionId, mobileNumber);
 
-        ImagePayload originalImagePayload = new ImagePayload();
-        originalImagePayload.setSessionId(sessionId);
         when(jsonValidator.validateAndTranslateMobileConfirmation(json)).thenReturn(newPayload);
-        when(imageStore.updateMobileDetails(newPayload)).thenReturn(originalImagePayload);
 
         Response response = resourceUnderTest.confirmMobile(json);
 

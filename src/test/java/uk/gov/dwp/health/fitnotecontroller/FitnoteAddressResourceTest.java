@@ -2,10 +2,10 @@ package uk.gov.dwp.health.fitnotecontroller;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.dwp.health.fitnotecontroller.FitnoteAddressResource;
-import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
+import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
+import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import uk.gov.dwp.health.fitnotecontroller.exception.NewAddressException;
 import uk.gov.dwp.health.fitnotecontroller.utils.JsonValidator;
@@ -20,10 +20,14 @@ import java.io.IOException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FitnoteAddressResourceTest {
+    private final static String VALID_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
+    private final static String INVALID_ADDRESS = "{}";
+    private final static String SESSION_ID = "123456";
 
     @Mock
     private JsonValidator jsonValidator;
@@ -31,20 +35,21 @@ public class FitnoteAddressResourceTest {
     @Mock
     private FitnoteControllerConfiguration config;
 
-    private FitnoteAddressResource resourceUnderTest;
-    private ImageStorage imageStore;
+    @Mock
+    private ImageStorage imageStorage;
 
-    private final String VALID_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
-    private final String INVALID_ADDRESS = "{}";
+    private FitnoteAddressResource resourceUnderTest;
 
     @Before
-    public void setup() throws ImagePayloadException {
-        when(config.getExpiryTimeInMilliSeconds()).thenReturn(new Long(1000));
+    public void setup() throws ImagePayloadException, IOException, CryptoException {
+        when(config.getSessionExpiryTimeInSeconds()).thenReturn(new Long(1000));
 
-        imageStore = new ImageStorage(config);
-        imageStore.getPayload("123456");
+        ImagePayload item = new ImagePayload();
+        item.setSessionId(SESSION_ID);
 
-        resourceUnderTest = new FitnoteAddressResource(imageStore, jsonValidator);
+        when(imageStorage.getPayload(eq(SESSION_ID))).thenReturn(item);
+
+        resourceUnderTest = new FitnoteAddressResource(imageStorage, jsonValidator);
     }
 
     @Test
@@ -56,7 +61,7 @@ public class FitnoteAddressResourceTest {
 
     @Test
     public void newAddressReturns400WhenInvalidJsonBodyIsSupplied() throws NewAddressException {
-        when(jsonValidator.validateAndTranslateAddress(INVALID_ADDRESS)).thenThrow(NewAddressException.class);
+        when(jsonValidator.validateAndTranslateAddress(INVALID_ADDRESS)).thenThrow(new NewAddressException("hello"));
         Response response = resourceUnderTest.updateAddress(INVALID_ADDRESS);
         assertThat(response.getStatus(), is(400));
     }
@@ -70,11 +75,12 @@ public class FitnoteAddressResourceTest {
     }
 
     @Test
-    public void imagePayloadIsUpdatedWithNewAddressWhenSessionIDExists() throws NewAddressException, IOException, ImagePayloadException {
+    public void imagePayloadIsUpdatedWithNewAddressWhenSessionIDExists() throws NewAddressException, IOException, ImagePayloadException, CryptoException {
         Address mockNewAddress = new ObjectMapper().readValue(VALID_ADDRESS, Address.class);
         when(jsonValidator.validateAndTranslateAddress(VALID_ADDRESS)).thenReturn(mockNewAddress);
-        Response response = resourceUnderTest.updateAddress(VALID_ADDRESS);
-        Address newAddress = imageStore.getPayload("123456").getClaimantAddress();
+        resourceUnderTest.updateAddress(VALID_ADDRESS);
+
+        Address newAddress = imageStorage.getPayload("123456").getClaimantAddress();
         assertThat(newAddress.getHouseNameOrNumber(), is("254"));
         assertThat(newAddress.getStreet(), is("Bakers Street"));
         assertThat(newAddress.getCity(), is("London"));

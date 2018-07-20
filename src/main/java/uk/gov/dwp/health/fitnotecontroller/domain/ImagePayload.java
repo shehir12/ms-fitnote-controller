@@ -1,11 +1,12 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonView;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
-import uk.gov.dwp.logging.DwpEncodedLogger;
+import org.slf4j.LoggerFactory;
 import uk.gov.dwp.regex.NinoValidator;
 
 import java.io.ByteArrayInputStream;
@@ -14,8 +15,9 @@ import java.io.IOException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ImagePayload {
-    private static final Logger LOG = DwpEncodedLogger.getLogger(ImagePayload.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ImagePayload.class.getName());
 
     public enum Status {
         CREATED,
@@ -61,7 +63,11 @@ public class ImagePayload {
     }
 
     public NinoValidator getNinoObject() {
-        return (nino.length() == 9) ? new NinoValidator(nino.substring(0, 8), nino.substring(8)) : new NinoValidator(nino, "");
+        if (nino == null) {
+            return null;
+        } else {
+            return (nino.length() == 9) ? new NinoValidator(nino.substring(0, 8), nino.substring(8)) : new NinoValidator(nino, "");
+        }
     }
 
     @JsonIgnore
@@ -144,12 +150,13 @@ public class ImagePayload {
     private byte[] compress(String str) {
         if (str != null) {
             try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                GZIPOutputStream gzip = new GZIPOutputStream(out);
-                gzip.write(str.getBytes());
-                gzip.close();
+                try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                    GZIPOutputStream gzip = new GZIPOutputStream(out);
+                    gzip.write(str.getBytes());
+                    gzip.close();
 
-                return out.toByteArray();
+                    return out.toByteArray();
+                }
 
             } catch (IOException e) {
                 LOG.error("Error compressing string : {}", e.getMessage());
@@ -164,7 +171,11 @@ public class ImagePayload {
         if (str != null) {
             GZIPInputStream gzipIn = null;
             try {
-                gzipIn = new GZIPInputStream(new ByteArrayInputStream(str));
+
+                try (ByteArrayInputStream inSteam = new ByteArrayInputStream(str)) {
+                    gzipIn = new GZIPInputStream(inSteam);
+                }
+
                 return IOUtils.toString(gzipIn);
             } catch (IOException e) {
                 LOG.error("Error uncompressing string : {}", e.getMessage());
