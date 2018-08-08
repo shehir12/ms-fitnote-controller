@@ -11,20 +11,20 @@ Starting the service -
  
     cd target; java -jar fitnote-controller-<version>.jar server path/to/config.yml
 
-## Endpoints
+## Service Endpoints
 
-each endpoint can be called in any order with the exception of `declaration` which will check all of the data for the session has been set.  If any entries are missing or invalid at `declaration` the software will return an error.
+each endpoint can be called in any order with the exception of `declaration` which will check all of the mandatory data items for the session have been set.  If any entries are missing or invalid at `declaration` the software will return an error.
 
-The first call to any of the endpoints for a new sessionId will implicitly create the entry in the ImageStorage class.  Each further call with the session id will update the current ImagePayload.
+All api endpoints check for existence of a sessionId in the redis store.  If the session does not exist, it is created and then updated based on the endpoint functionality. Each further call with the session id will update the current ImagePayload and set the expiry time in redis based on the `sessionExpiryTimeInSeconds` configuration parameter.
 
 ### `/photo`
 
 **POST** request expecting JSON object of base 64 encoded image of the fitnote and a session id.
 
-`{
-  "image":"base64-encoded-string",
-  "sessionId":"session1"
-}`
+    {
+        "image":"base64-encoded-string",
+        "sessionId":"session1"
+    }
 
 Returns:-
 
@@ -37,13 +37,16 @@ Returns:-
 
 **GET** request, passing the session id (as json) to check the status of the image processing
 
-`{
-  "sessionId":"session1"
-}`
+`{"sessionId":"session1"}`
 
 Returns:-
 
-* **200** :: Success.  Returns json status `{"fitnoteStatus":"<status>", "barcodeStatus":"<status>"}`
+    {
+        "fitnoteStatus":"<status>", 
+        "barcodeStatus":"<status>"
+    }
+    
+* **200** :: Success.  Returns json status
 * **400** :: Missing session-id in json (error is logged)
 
 currently the list of statuses are
@@ -65,13 +68,13 @@ currently the list of statuses are
 
 **POST** request with the claimant's address
 
-`{
-  "sessionId":"session1",
-  "houseNameOrNumber":"Shangri La",
-  "street":"The Street",
-  "city":"Leeds",
-  "postcode":"LS1 1AB"
-}`
+    {
+        "sessionId":"session1",
+        "houseNameOrNumber": "221b",
+        "street": "Baker Street",
+        "city": "London",
+        "postcode": "NW1 6XE"
+    }
 
 Returns:-
 
@@ -83,10 +86,10 @@ Returns:-
 
 **POST** request to specify the mandatory NINO
 
-`{
-  "sessionId":"123456",
-  "nino":"AA370773"
-}`
+    {
+        "sessionId":"123456",
+        "nino":"AA370773"
+    }
 
 Returns:-
 
@@ -96,12 +99,12 @@ Returns:-
 
 ## `/mobile`
 
-**POST** request to specify the optional MOBILE PHONE NUMBER
+**POST** request to specify the optional mobile phone number
 
-`{
-  "sessionId":"123456",
-  "mobileNumber":"07877654321"
-}`
+    {
+        "sessionId":"123456",
+        "mobileNumber":"07877654321"
+    }
 
 Returns:-
 
@@ -113,10 +116,10 @@ Returns:-
 
 **POST** request to complete the user journey with an accept.
 
-`{
-  "sessionId":"session1",
-  "accepted":true
-}`
+    {
+        "sessionId":"session1",
+        "accepted":true
+    }
 
 * _true_ : declare ok, package, send to RabbitMQ and clear session
 * _false_ : declare not ok, log, clear the session and return
@@ -127,6 +130,97 @@ Returns:-
 * **400** :: Bad or Malformed content.  Returns what is missing (detailed error is logged)
 * **500** :: Internal error occurred.  Returns "Unable to process request" (error is logged)
 
+## Query Endpoints
+
+## `/queryNino`
+
+**POST** request to query the nino details for a given sessionId.
+
+`{"sessionId":"session1"}`
+
+Return data :-
+
+    {
+        "sessionId": "session1",
+        "nino": "AA370773A"
+    }
+
+or (if no nino has been set for the session)
+
+{
+    "sessionId": "session1",
+    "nino": ""
+}
+
+Return code :-
+
+* **200** :: Success, with the formatted JSON
+* **400** :: Bad or Malformed content.  Returns what is missing (detailed error is logged)
+* **500** :: Internal error occurred.  Returns "Unable to process request" (error is logged)
+
+## `/queryAddress`
+
+**POST** request to query the address details for a given sessionId.
+
+`{"sessionId":"session1"}`
+
+Return data :-
+
+    {
+        "sessionId": "session1",
+        "claimantAddress": {
+            "sessionId": "session1",
+            "houseNameOrNumber": "221b",
+            "street": "Baker Street",
+            "city": "London",
+            "postcode": "NW1 6XE"
+        }
+    }
+
+or (if no address has been set for the session)
+
+    {
+        "sessionId": "session1",
+        "claimantAddress": {
+            "sessionId": null,
+            "houseNameOrNumber": null,
+            "street": null,
+            "city": null,
+            "postcode": null
+        }
+    }
+
+Return code :-
+
+* **200** :: Success, with the formatted JSON
+* **400** :: Bad or Malformed content.  Returns what is missing (detailed error is logged)
+* **500** :: Internal error occurred.  Returns "Unable to process request" (error is logged)
+
+## `/queryMobile`
+
+**POST** request to query the mobile phone number details for a given sessionId.
+
+`{"sessionId":"session1"}`
+
+Return data :-
+
+    {
+        "sessionId": "session1",
+        "mobileNumber": "07877123456"
+    }
+
+or (if no phone has been set for the session)
+
+    {
+        "sessionId": "session1",
+        "mobileNumber": ""
+    }
+
+Return code :-
+
+* **200** :: Success, with the formatted JSON
+* **400** :: Bad or Malformed content.  Returns what is missing (detailed error is logged)
+* **500** :: Internal error occurred.  Returns "Unable to process request" (error is logged)
 
 ## Configuration Elements
 

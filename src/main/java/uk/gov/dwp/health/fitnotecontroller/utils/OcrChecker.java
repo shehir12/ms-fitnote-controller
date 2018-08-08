@@ -174,7 +174,7 @@ public class OcrChecker {
         ocrScanTopLeft(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation);
 
         if (fitnoteFormat.getTopLeftPercentage() < configuration.getDiagonalTarget()) {
-            LOG.info("TL {} < {}, impossible diagnonal match, move to BL", fitnoteFormat.getTopLeftPercentage(), configuration.getDiagonalTarget());
+            LOG.info("TL {} < {}, impossible diagonal match, move to BL", fitnoteFormat.getTopLeftPercentage(), configuration.getDiagonalTarget());
 
         } else {
 

@@ -22,6 +22,7 @@ import uk.gov.dwp.health.fitnotecontroller.redis.RedisTestClusterManager;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -34,7 +35,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
-@SuppressWarnings("squid:S2925") // for Thread.sleep()
 @RunWith(MockitoJUnitRunner.class)
 public class ImageStorageTest {
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -273,7 +273,7 @@ public class ImageStorageTest {
         localInstance.updateNinoDetails(newPayloadWithSameSessionId);
         newPayloadWithSameSessionId = localInstance.getPayload(sessionId);
 
-        Thread.sleep((configuration.getSessionExpiryTimeInSeconds() * 1000) + 3000);
+        TimeUnit.MILLISECONDS.sleep((configuration.getSessionExpiryTimeInSeconds() * 1000) + 3000);
 
         assertThat("should not be the original object", localInstance.getPayload(sessionId).getNino(), is(not(equalTo(newPayloadWithSameSessionId.getNino()))));
     }
@@ -345,7 +345,7 @@ public class ImageStorageTest {
         localInstance.updateImageHashStore(input);
         localInstance.updateImageHashStore(input);
 
-        Thread.sleep((configuration.getImageReplayExpirySeconds() * 1000) + 3000);
+        TimeUnit.MILLISECONDS.sleep((configuration.getImageReplayExpirySeconds() * 1000) + 3000);
 
         localInstance.updateImageHashStore(input);
     }

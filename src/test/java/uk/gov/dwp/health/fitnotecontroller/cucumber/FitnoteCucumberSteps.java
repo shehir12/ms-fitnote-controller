@@ -39,6 +39,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,8 +54,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-@SuppressWarnings("squid:S2925")
 public class FitnoteCucumberSteps {
     private static final Logger LOG = LoggerFactory.getLogger(FitnoteCucumberSteps.class.getName());
     private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 120000;
@@ -140,11 +141,19 @@ public class FitnoteCucumberSteps {
                 throw new IOException(String.format("TIMING OUT :: '%s' request after %d milliseconds with no match on response body", url, IMAGE_STATUS_QUERY_TIMEOUT_MILLIS));
             }
 
-            Thread.sleep(1000);
+            TimeUnit.SECONDS.sleep(1);
             performHttpGetWithUriOf(fullUrl);
             checkHTTPResponseStatusCode(status);
 
-        } while (!HttpResponseBodyContainsEntries(expectedValues));
+        } while (!httpResponseBodyContainsEntries(expectedValues));
+    }
+
+    @And("^I hit the service url \"([^\"]*)\" with a POST and session id \"([^\"]*)\" getting return status (\\d+) the following json body$")
+    public void iHitTheServiceUrlWithAPOSTAndSessionIdGettingReturnStatusTheFollowingJsonBody(String url, String sessionId, int statusCode, Map<String, String> expectedValues) throws Throwable {
+        performHttpPostWithUriOf(url, String.format("{\"sessionId\":\"%s\"}", sessionId));
+        checkHTTPResponseStatusCode(statusCode);
+
+        assertTrue(httpResponseBodyContainsEntries(expectedValues));
     }
 
     @And("^I hit the service url \"([^\"]*)\" with session id \"([^\"]*)\" getting return status (\\d+) and finally timing out trying to match the following body$")
@@ -221,14 +230,14 @@ public class FitnoteCucumberSteps {
         }
     }
 
-    private boolean HttpResponseBodyContainsEntries(Map<String, String> expectedJsonValues) {
+    private boolean httpResponseBodyContainsEntries(Map<String, String> expectedJsonValues) {
         boolean matchResult = true;
         try {
             JsonNode responseBody = mapper.readTree(jsonResponse);
             for (Map.Entry<String, String> expectedJsonKeyValue : expectedJsonValues.entrySet()) {
                 JsonNode jsonKey = responseBody.get(expectedJsonKeyValue.getKey());
                 if (jsonKey != null) {
-                    String actualValue = jsonKey.textValue();
+                    String actualValue = jsonKey.isObject()? jsonKey.toString() : jsonKey.textValue();
                     LOG.info("Found json element '{}' with expected value '{}'.  Actual value was '{}'", expectedJsonKeyValue.getKey(), expectedJsonKeyValue.getValue(), actualValue);
                     if (!expectedJsonKeyValue.getValue().equals(actualValue)) {
                         matchResult = false;

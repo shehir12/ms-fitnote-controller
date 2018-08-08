@@ -107,7 +107,7 @@ public class FitnoteSubmitResource {
             LOG.debug(ERROR_MSG, e);
         } catch (IOException e) {
             response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
-            LOG.error("IOException :: {}", e.getClass().getName(), e.getMessage());
+            LOG.error("IOException :: {}", e.getMessage());
             LOG.debug(ERROR_MSG, e);
         }
         LOG.debug("Completed /photo, send back status {}", response.getStatusInfo().getStatusCode());

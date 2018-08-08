@@ -7,6 +7,7 @@ import uk.gov.dwp.health.crypto.rabbitmq.MessageEncoder;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteAddressResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteConfirmationResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteDeclarationResource;
+import uk.gov.dwp.health.fitnotecontroller.FitnoteQueryResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteSubmitResource;
 import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
 import io.dropwizard.Application;
@@ -49,12 +50,14 @@ public class FitnoteControllerApplication extends Application<FitnoteControllerC
         final FitnoteSubmitResource resource = new FitnoteSubmitResource(fitnoteControllerConfiguration, imageStorage);
         final FitnoteConfirmationResource confirmationResource = new FitnoteConfirmationResource(imageStorage);
         final FitnoteAddressResource addressResource = new FitnoteAddressResource(imageStorage);
+        final FitnoteQueryResource queryResource = new FitnoteQueryResource(imageStorage);
         final FitnoteDeclarationResource declarationResource = new FitnoteDeclarationResource(imageStorage, rabbitMqPublisher, fitnoteControllerConfiguration);
 
         environment.jersey().register(resource);
         environment.jersey().register(confirmationResource);
         environment.jersey().register(declarationResource);
         environment.jersey().register(addressResource);
+        environment.jersey().register(queryResource);
     }
 
     public static void main(String[] args) throws Exception {

@@ -2,6 +2,8 @@ package uk.gov.dwp.health.fitnotecontroller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
+import com.googlecode.junittoolbox.PollingWait;
+import com.googlecode.junittoolbox.RunnableAssert;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
@@ -25,15 +27,19 @@ import javax.ws.rs.core.Response;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.http.HttpStatus.SC_ACCEPTED;
 import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.http.HttpStatus.SC_SERVICE_UNAVAILABLE;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
@@ -44,13 +50,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@SuppressWarnings("squid:S2925")
 @RunWith(MockitoJUnitRunner.class)
 public class FitnoteSubmitResourceTest {
 
     private static final String SESSION = "session1";
     private Optional sessionIdParameter = Mockito.mock(Optional.class);
-    private long EXPIRY_TIME_MILLISECONDS = 60000;
     private static String LANDSCAPE_FITNOTE_IMAGE;
     private static String PORTRAIT_FITNOTE_IMAGE;
     private static String PDF_FITNOTE_IMAGE;
@@ -112,7 +116,6 @@ public class FitnoteSubmitResourceTest {
 
         long freeMemory = MemoryChecker.returnCurrentAvailableMemoryInMb(Runtime.getRuntime());
         OVER_MAX_MEMORY = (int) freeMemory + 300;
-        //The cast is a little ugly as theoretically could loose data, but ok for this purpose.
     }
 
     @Test
@@ -147,17 +150,8 @@ public class FitnoteSubmitResourceTest {
         Response response = resourceUnderTest.submitFitnote(PORTRAIT_JSON);
         verify(validator).validateAndTranslateSubmission(PORTRAIT_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("FAILED_IMG_SIZE"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
-
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("FAILED_IMG_SIZE"));
+        examineImagestatusResponseForValueOrTimeout("FAILED_IMG_SIZE");
     }
 
     @Test
@@ -186,17 +180,9 @@ public class FitnoteSubmitResourceTest {
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         verify(validator).validateAndTranslateSubmission(VALID_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("SUCCEEDED"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
+        examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("SUCCEEDED"));
         verify(imageCompressor, times(2)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
         assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
@@ -214,17 +200,9 @@ public class FitnoteSubmitResourceTest {
         Response response = resourceUnderTest.submitFitnote(PDF_JSON);
         verify(validator).validateAndTranslateSubmission(PDF_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("SUCCEEDED"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
+        examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("SUCCEEDED"));
         verify(imageCompressor, times(2)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
         assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
@@ -240,17 +218,15 @@ public class FitnoteSubmitResourceTest {
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         verify(validator).validateAndTranslateSubmission(VALID_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < 10000) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("NEVER_GONNA_MATCH"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
+        try {
+            examineImagestatusResponseForValueOrTimeout("NEVER_GONNA_MATCH");
+            fail("should always timeout");
 
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
+        } catch (AssertionError e) {
+            assertThat(e.getMessage(), containsString("RunnableAssert(checking /imagestatus for current session) did not succeed within 60 seconds"));
         }
 
-        assertFalse(decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("NEVER_GONNA_MATCH"));
         assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
 
@@ -263,17 +239,9 @@ public class FitnoteSubmitResourceTest {
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         verify(validator).validateAndTranslateSubmission(VALID_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("SUCCEEDED"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
+        examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("SUCCEEDED"));
         verify(imageCompressor, times(1)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
         assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
@@ -297,17 +265,8 @@ public class FitnoteSubmitResourceTest {
         when(ocrChecker.imageContainsReadableText(any(ImagePayload.class))).thenThrow(new IOException("thrown for test purposes"));
         Response response = resourceUnderTest.submitFitnote(json);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("FAILED_ERROR"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
-
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("FAILED_ERROR"));
+        examineImagestatusResponseForValueOrTimeout("FAILED_ERROR");
     }
 
     @Test
@@ -335,17 +294,8 @@ public class FitnoteSubmitResourceTest {
         createAndValidateImage(VALID_JSON, true, imagePayload);
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         assertThat(response.getStatus(), is(SC_ACCEPTED));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("FAILED_ERROR"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
-
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("FAILED_ERROR"));
+        examineImagestatusResponseForValueOrTimeout("FAILED_ERROR");
     }
 
     @Test
@@ -357,18 +307,10 @@ public class FitnoteSubmitResourceTest {
 
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("FAILED_IMG_OCR"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
-
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
+        examineImagestatusResponseForValueOrTimeout("FAILED_IMG_OCR");
 
         verify(imageCompressor, times(1)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("FAILED_IMG_OCR"));
     }
 
     @Test
@@ -393,17 +335,8 @@ public class FitnoteSubmitResourceTest {
 
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-        long startTime = System.currentTimeMillis();
 
-        response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        while (((System.currentTimeMillis() - startTime) < EXPIRY_TIME_MILLISECONDS) && (!decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals("FAILED_ERROR"))) {
-            assertThat(response.getStatus(), is(equalTo(SC_OK)));
-
-            Thread.sleep(1000);
-            response = resourceUnderTest.checkFitnote(sessionIdParameter);
-        }
-
-        assertThat(decodeResponse(response.getEntity().toString()).getFitnoteStatus(), is("FAILED_ERROR"));
+        examineImagestatusResponseForValueOrTimeout("FAILED_ERROR");
     }
 
     @Test
@@ -427,12 +360,24 @@ public class FitnoteSubmitResourceTest {
         verifyNoMoreInteractions(ocrChecker);
     }
 
+    private void examineImagestatusResponseForValueOrTimeout(String expectedStatus) {
+        PollingWait wait = new PollingWait().timeoutAfter(60, SECONDS).pollEvery(1, SECONDS);
+
+        wait.until(new RunnableAssert("checking /imagestatus for current session") {
+            @Override
+            public void run() throws Exception {
+                Response response = resourceUnderTest.checkFitnote(sessionIdParameter);
+                assertTrue(decodeResponse(response.getEntity().toString()).getFitnoteStatus().equals(expectedStatus));
+            }
+        });
+    }
+
     private void createAndValidateImage(String json, boolean isValid, ImagePayload imagePayload) throws ImagePayloadException, IOException, CryptoException {
         when(validator.validateAndTranslateSubmission(json)).thenReturn(imagePayload);
         when(ocrChecker.imageContainsReadableText(imagePayload)).thenReturn(isValid ? ExpectedFitnoteFormat.Status.SUCCESS : ExpectedFitnoteFormat.Status.FAILED);
     }
 
-    private StatusItem decodeResponse(String response) throws IOException, CryptoException {
+    private StatusItem decodeResponse(String response) throws IOException {
         return new ObjectMapper().readValue(response, StatusItem.class);
     }
 

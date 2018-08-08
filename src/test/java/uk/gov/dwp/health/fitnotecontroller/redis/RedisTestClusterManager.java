@@ -1,5 +1,7 @@
 package uk.gov.dwp.health.fitnotecontroller.redis;
 
+import com.googlecode.junittoolbox.PollingWait;
+import com.googlecode.junittoolbox.RunnableAssert;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,12 +10,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.Assert.assertTrue;
+
 public class RedisTestClusterManager {
     private static final String DOCKER_IMAGE_NAME = "nexus.mgmt.health-dev.dwpcloud.uk:5000/grokzen/redis-cluster";
     private static final Logger LOG = LoggerFactory.getLogger(RedisTestClusterManager.class.getName());
 
     private static final String[] DOCKER_RUN_COMMAND = {"docker", "run", "--rm", "--name", "redis_test_integ", "-p", "7000-7005:7000-7005", "--env", "CLUSTER_ONLY=true", "--env", "IP=0.0.0.0", DOCKER_IMAGE_NAME};
-    private static final String[] DOCKER_STOP_COMMAND = {"docker", "stop",  "redis_test_integ"};
+    private static final String[] DOCKER_STOP_COMMAND = {"docker", "stop", "redis_test_integ"};
     private static File outputFile = new File("src/test/resources/redisProcess.log");
 
     private RedisTestClusterManager() {
@@ -26,9 +31,8 @@ public class RedisTestClusterManager {
 
         runProcess.redirectOutput(ProcessBuilder.Redirect.to(outputFile));
         runProcess.redirectErrorStream(true);
-        Process start = runProcess.start();
+        runProcess.start();
 
-        start.waitFor(5, TimeUnit.SECONDS);
         checkRedisUp(outputFile);
     }
 
@@ -40,28 +44,23 @@ public class RedisTestClusterManager {
     }
 
     private static void checkRedisUp(File output) throws IOException, InterruptedException {
-        long startTime = System.currentTimeMillis();
-        boolean processStarted = false;
+        PollingWait wait = new PollingWait().timeoutAfter(30, SECONDS).pollEvery(1, SECONDS);
 
         if (FileUtils.readFileToString(output, "UTF-8").contains("The container name \"/redis_test_integ\" is already in use")) {
             throw new IOException("The container name \"/redis_test_integ\" is already in use, docker will shutdown the container and exit, ready for re-run");
         }
 
-        while ((System.currentTimeMillis() - startTime) < 30000) {
-            LOG.info("redis-cluster up and initialising...  checking output {} for 30 seconds; {} seconds elapsed", output.getName(), (System.currentTimeMillis() - startTime)/1000);
-            if (FileUtils.readFileToString(output, "UTF-8").contains("/var/log/supervisor/redis-6.log")) {
-                Thread.sleep(3000);
-                processStarted = true;
+        wait.until(new RunnableAssert("waiting for redis cluster to complete startup & initialise") {
+            @Override
+            public void run() throws Exception {
+                LOG.info("checking redis cluster status...");
+                assertTrue("checking redis cluster status", FileUtils.readFileToString(output, "UTF-8").contains("/var/log/supervisor/redis-6.log"));
+
+                LOG.info("redis cluster is 'up'.  pausing 3 seconds for clustered nodes to accept connections");
+                TimeUnit.SECONDS.sleep(3); // to ensure all ports are open for connections
                 LOG.info("started");
-                break;
             }
-
-            Thread.sleep(1000);
-        }
-
-        if (!processStarted) {
-            throw new IOException(FileUtils.readFileToString(output, "UTF-8"));
-        }
+        });
     }
 
     private static String[] commandBuilder(String[] input) {

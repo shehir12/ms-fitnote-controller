@@ -34,16 +34,18 @@ public class ImagePayload {
         FAILED_ERROR
     }
 
-    @JsonView(Views.SessionOnly.class)
+    @JsonView({Views.SessionOnly.class, Views.QueryNinoDetails.class, Views.QueryAddressDetails.class, Views.QueryMobileDetails.class})
     private String sessionId;
 
     private byte[] image;
     private long expiryTime;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonView(Views.QueryNinoDetails.class)
     private String nino;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonView(Views.QueryMobileDetails.class)
     private String mobileNumber;
 
     private Status fitnoteCheckStatus;
@@ -52,6 +54,7 @@ public class ImagePayload {
     private BarcodeContents barcodeContents;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonView(Views.QueryAddressDetails.class)
     private Address claimantAddress;
 
     public long getExpiryTime() {
