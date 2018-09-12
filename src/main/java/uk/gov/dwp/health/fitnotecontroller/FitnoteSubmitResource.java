@@ -60,8 +60,8 @@ public class FitnoteSubmitResource {
     }
 
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
     @Path("/imagestatus")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response checkFitnote(@QueryParam("sessionId") Optional<String> sessionId) throws ImagePayloadException, IOException, CryptoException {
         Response response;
         if (sessionId.isPresent()) {
@@ -69,6 +69,22 @@ public class FitnoteSubmitResource {
             ImagePayload payload = imageStorage.getPayload(formatted);
             
             response = Response.status(Response.Status.OK).entity(createStatusOnlyResponseFrom(payload.getFitnoteCheckStatus(), payload.getBarcodeCheckStatus())).build();
+        } else {
+            response = Response.status(Response.Status.BAD_REQUEST).build();
+
+        }
+        return response;
+    }
+
+    @GET
+    @Path("/extendSession")
+    public Response extendSession(@QueryParam("sessionId") Optional<String> sessionId) throws ImagePayloadException, IOException, CryptoException {
+        Response response;
+        if (sessionId.isPresent()) {
+            String formatted = sessionId.get().replaceAll(LOG_STANDARD_REGEX, "");
+            imageStorage.extendSessionTimeout(formatted);
+
+            response = Response.status(Response.Status.OK).build();
         } else {
             response = Response.status(Response.Status.BAD_REQUEST).build();
 

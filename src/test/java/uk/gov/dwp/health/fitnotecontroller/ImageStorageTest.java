@@ -332,6 +332,28 @@ public class ImageStorageTest {
         assertThat(updatedPayload.getNinoObject().getNinoSuffix(), is(equalTo("")));
     }
 
+    @Test
+    public void updateTimeoutForSessionIsExtendedPLAIN() throws CryptoException, IOException, ImagePayloadException, InterruptedException {
+        when(configuration.getSessionExpiryTimeInSeconds()).thenReturn(10L);
+        when(configuration.isRedisEncryptMessages()).thenReturn(false);
+
+        String sessionId = UUID.randomUUID().toString();
+        String nino = "i-am-a-nino";
+
+        ImagePayload newPayload = new ImagePayload();
+        newPayload.setSessionId(sessionId);
+        newPayload.setNino(nino);
+
+        instance.updateNinoDetails(newPayload);
+
+        TimeUnit.SECONDS.sleep(6); // 2/3 session timeout
+        instance.extendSessionTimeout(sessionId);
+
+        TimeUnit.SECONDS.sleep(8); // push over the timeout limit
+        ImagePayload savedPayload = instance.getPayload(sessionId);
+        assertThat(savedPayload.getNino(), is(equalTo(nino)));
+    }
+
     @Test(expected = ImageHashException.class)
     public void testNullSubmissionFails() throws ImageHashException {
         instance.updateImageHashStore(null);

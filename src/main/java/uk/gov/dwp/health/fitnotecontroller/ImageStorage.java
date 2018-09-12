@@ -134,7 +134,6 @@ public class ImageStorage {
         payloadToChange.setNino(payload.getNino());
 
         setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + payload.getSessionId(), encode(payloadToChange));
-
     }
 
     public void updateMobileDetails(ImagePayload payload) throws ImagePayloadException, IOException, CryptoException {
@@ -190,6 +189,17 @@ public class ImageStorage {
     public void clearSession(String sessionId) {
         LOG.info("Removing sessionId {} from redis store", sessionId);
         getSynchronousCommands().del(IMAGE_PAYLOAD_NAME + sessionId);
+    }
+
+    public void extendSessionTimeout(String sessionId) throws ImagePayloadException, IOException, CryptoException {
+        if (sessionId == null) {
+            throw new ImagePayloadException("SessionId cannot be null");
+        }
+
+        ImagePayload payloadToChange = getPayload(sessionId);
+        LOG.info("extending timeout for session id {} to {}s", sessionId, configuration.getSessionExpiryTimeInSeconds());
+
+        setAndUpdateImagePayloadItem(IMAGE_PAYLOAD_NAME + sessionId, encode(payloadToChange));
     }
 
     private void setAndUpdateImagePayloadItem(String compositeKey, String contents) {

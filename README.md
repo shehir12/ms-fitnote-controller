@@ -35,9 +35,7 @@ Returns:-
 
 ## `/imagestatus`
 
-**GET** request, passing the session id (as json) to check the status of the image processing
-
-`{"sessionId":"session1"}`
+**GET** request, passing `sessionId` as a url parameter to return the status of the image
 
 Returns:-
 
@@ -63,6 +61,15 @@ currently the list of statuses are
 * `PASS_IMG_BARCODE`
 * `SUCCEEDED`
 * `FAILED_ERROR`
+
+## `/extendSession`
+
+**GET**  request, passing the `sessionId` as a url parameter to grant another `sessionExpiryTimeInSeconds` to the current session.
+
+Returns:-
+
+* **200** :: Success (no return body)
+* **400** :: Missing session-id in json (error is logged)
 
 ## `/address`
 
@@ -147,10 +154,10 @@ Return data :-
 
 or (if no nino has been set for the session)
 
-{
-    "sessionId": "session1",
-    "nino": ""
-}
+    {
+        "sessionId": "session1",
+        "nino": ""
+    }
 
 Return code :-
 

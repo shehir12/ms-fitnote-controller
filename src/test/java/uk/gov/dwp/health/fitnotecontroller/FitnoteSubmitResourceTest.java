@@ -141,6 +141,20 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
+    public void extendSessionCallIsOkWithUnknownSessionIdParameterIsPassedIn() throws ImagePayloadException, IOException, CryptoException {
+        when(sessionIdParameter.get()).thenReturn("Unknown session id");
+        Response response = resourceUnderTest.extendSession(sessionIdParameter);
+        assertThat(response.getStatus(), is(equalTo(SC_OK)));
+    }
+
+    @Test
+    public void extendSessionCallFailsWhenNoSessionIdParameterIsPassedIn() throws ImagePayloadException, IOException, CryptoException {
+        when(sessionIdParameter.isPresent()).thenReturn(false);
+        Response response = resourceUnderTest.extendSession(sessionIdParameter);
+        assertThat(response.getStatus(), is(equalTo(SC_BAD_REQUEST)));
+    }
+
+    @Test
     public void portraitImageFailsChecksWhenOn() throws IOException, CryptoException, ImagePayloadException, InterruptedException {
         when(controllerConfiguration.isLandscapeImageEnforced()).thenReturn(true);
         ImagePayload imagePayload = imageStorage.getPayload(SESSION);
