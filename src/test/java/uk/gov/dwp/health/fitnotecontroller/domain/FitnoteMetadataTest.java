@@ -2,7 +2,6 @@ package uk.gov.dwp.health.fitnotecontroller.domain;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.dwp.health.fitnotecontroller.domain.FitnoteMetadata;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -15,7 +14,7 @@ public class FitnoteMetadataTest {
     private static final String EXPECTED_SERIALISED_CLASS = "{\"businessUnitID\":null,\"classification\":0,\"documentType\":0,\"documentSource\":0,\"postCode\":\"LS6 4PT\",\"nino\":null,\"benefitType\":99,\"customerMobileNumber\":\"0113 25678886\"}";
 
     @Test
-    public void classCanBeBuiltUsingSerialised_JSON() throws IOException {
+    public void classCanBeBuiltUsingSerialisedJson() throws IOException {
         new ObjectMapper().readValue(EXPECTED_SERIALISED_CLASS, FitnoteMetadata.class);
     }
 

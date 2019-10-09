@@ -9,13 +9,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -27,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
+@SuppressWarnings({"squid:S1192", "squid:S00101"}) // all string literals and non-standard naming convention of FITNOTE_xxx
 public class FITNOTE_OcrCheckerTest {
     private OcrChecker checker;
 
@@ -46,13 +48,14 @@ public class FITNOTE_OcrCheckerTest {
         baseRightList.add("signed this");
         baseRightList.add("make a claim");
 
-        when(mockConfig.getTesseractFolderPath()).thenReturn("src/main/properties");
+        when(mockConfig.getTesseractFolderPath()).thenReturn("src/main/properties/tessdata");
         when(mockConfig.getBorderLossPercentage()).thenReturn(10);
         when(mockConfig.getMaxLogChars()).thenReturn(2000);
         when(mockConfig.getTargetBrightness()).thenReturn(179);
         when(mockConfig.getDiagonalTarget()).thenReturn(20);
         when(mockConfig.getHighTarget()).thenReturn(100);
         when(mockConfig.getContrastCutOff()).thenReturn(105);
+        when(mockConfig.getOcrVerticalSlice()).thenReturn(6);
         when(mockConfig.getTopLeftText()).thenReturn(topLeftList);
         when(mockConfig.getTopRightText()).thenReturn(topRightList);
         when(mockConfig.getBaseLeftText()).thenReturn(baseLeftList);
@@ -77,14 +80,26 @@ public class FITNOTE_OcrCheckerTest {
         samplePictures.put("/fitnotes/newSample/IMG_0012.JPG", ExpectedFitnoteFormat.Status.SUCCESS);
         samplePictures.put("/fitnotes/newSample/IMG_0015.JPG", ExpectedFitnoteFormat.Status.FAILED);
 
-        for (String key : samplePictures.keySet()) {
-            assertThat(String.format("%s :: expected result was %s", key, samplePictures.get(key)), checker.imageContainsReadableText(getTestImage(key)), is(equalTo(samplePictures.get(key))));
+        for (Map.Entry<String, ExpectedFitnoteFormat.Status> item : samplePictures.entrySet()) {
+            assertThat(String.format("%s :: expected result was %s", item.getKey(), item.getValue()), checker.imageContainsReadableText(getTestImage(item.getKey())), is(equalTo(item.getValue())));
         }
     }
 
     @Test
     public void confirmOcrCheckerCanRecogniseText() throws IOException {
         assertThat(checker.imageContainsReadableText(getTestImage("/fitnotes/FullPage.jpg")), is(equalTo(ExpectedFitnoteFormat.Status.SUCCESS)));
+    }
+
+    @Test
+    public void confirmOldStyleFitnoteIsUnsuccessfulWithStandardSixthSlice() throws IOException {
+        assertThat(checker.imageContainsReadableText(getTestImage("/fitnotes/oldStyleSubmittedFitnote.jpg")), is(equalTo(ExpectedFitnoteFormat.Status.PARTIAL)));
+    }
+
+    @Test
+    public void confirmOldStyleFitnoteIsSuccessfulWithVerticalQuarterSlice() throws IOException {
+        when(mockConfig.getOcrVerticalSlice()).thenReturn(4);
+
+        assertThat(checker.imageContainsReadableText(getTestImage("/fitnotes/oldStyleSubmittedFitnote.jpg")), is(equalTo(ExpectedFitnoteFormat.Status.SUCCESS)));
     }
 
     @Test
@@ -113,7 +128,7 @@ public class FITNOTE_OcrCheckerTest {
     }
 
     @Test
-    public void rightHandSidePageIs_NOT_ACCEPTED() throws IOException {
+    public void rightHandSidePageIsNotAccepted() throws IOException {
         assertThat(checker.imageContainsReadableText(getTestImage("/fitnotes/right_hand_side_only.jpg")), is(equalTo(ExpectedFitnoteFormat.Status.FAILED)));
     }
 

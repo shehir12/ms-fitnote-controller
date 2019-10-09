@@ -5,23 +5,24 @@ import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.exception.DeclarationException;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import uk.gov.dwp.health.fitnotecontroller.exception.NewAddressException;
-import uk.gov.dwp.health.fitnotecontroller.utils.JsonValidator;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.internal.matchers.NotNull;
 
 import java.io.File;
 import java.io.IOException;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings({"squid:S1192", "squid:S00116"}) // allow string literals and non-standard variable names for clarity
 public class JsonValidatorTest extends JsonValidator {
     private static final String JPG_IMAGE_LANDSCAPE = "src/test/resources/FullPage_Landscape.jpg";
     private static final String DATAMATRIX_IMAGE = "src/test/resources/working_barcode.jpg";
@@ -65,7 +66,7 @@ public class JsonValidatorTest extends JsonValidator {
     }
 
     @Test
-    public void imagePayload_Object_Is_Returned_For_Valid_Json() throws ImagePayloadException, IOException {
+    public void imagePayloadObjectIsReturnedForValidJson() throws ImagePayloadException {
         String sessionId = "123456";
         String json = "{\"sessionId\":\"" + sessionId + "\"," +
                 "\"nino\":\"AA370773A\"}";
@@ -75,63 +76,58 @@ public class JsonValidatorTest extends JsonValidator {
     }
 
     @Test
-    public void null_SessionId_On_Submission_Throws_Exception() {
+    public void nullSessionIdOnSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateSubmission(("{\"image\":\"" + "678678678678678fuyff" + "\"}"));
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void null_Json_On_Submission_Throws_Exception() {
+    public void nullJsonOnSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateSubmission(null);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(NO_JSON));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void empty_SessionId_On_Submission_Throws_Exception() {
+    public void emptySessionIdOnSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateSubmission(("{\"image\":\"" + "678678678678678fuyff" + "\",\"sessionId\":\"\"}"));
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void invalid_Json_On_Submission_Throws_Exception() {
+    public void invalidJsonOnSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateSubmission("invalid json");
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains("JsonParseException"));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void null_SessionId_On_Confirmation_Throws_Exception() {
+    public void nullSessionIdOnConfirmationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateSubmission(("{\"nino\":\"AA370773A\"," +
                     "\"mobileNumber\":\"0113999999\"}"));
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void empty_SessionId_On_Confirmation_Throws_Exception() {
+    public void emptySessionIdOnConfirmationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateConfirmation("{\"sessionId\":\"\"," +
                     "\"nino\":\"AA370773A\"," +
@@ -139,23 +135,21 @@ public class JsonValidatorTest extends JsonValidator {
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void invalid_Json_On_Confirmation_Throws_Exception() {
+    public void invalidJsonOnConfirmationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateConfirmation("invalid json");
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains("JsonParseException"));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void empty_NINO_On_Confirmation_Throws_Exception() {
+    public void emptyNINOOnConfirmationThrowsException() {
         try {
             String json = "{\"sessionId\":\"123456\"," +
                     "\"nino\":\"\"}";
@@ -163,166 +157,156 @@ public class JsonValidatorTest extends JsonValidator {
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(INVALID_NINO));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void missing_NINO_On_Confirmation_Throws_Exception() {
+    public void missingNINOOnConfirmationThrowsException() {
         try {
             String json = "{\"sessionId\":\"123456\"}";
             validatorUnderTest.validateAndTranslateConfirmation(json);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(INVALID_NINO));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void null_Json_On_Confirmation_Throws_Exception() {
+    public void nullJsonOnConfirmationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateConfirmation(null);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(NO_JSON));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Valid() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"07869123456\"}";
+    public void jsonOnMobileConfirmationIsValid() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"07869123456\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Valid_With_Leading_Plus() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"+44113999999\"}";
+    public void jsonOnMobileConfirmationIsValidWithLeadingPlus() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"+44113999999\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Invalid_8_Digits() {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"12345678\"}";
+    public void jsonOnMobileConfirmationIsInvalid8Digits() {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"12345678\"}";
         try {
             validatorUnderTest.validateAndTranslateMobileConfirmation(json);
             fail("should have thrown invalid mobile number error");
         } catch (ImagePayloadException e) {
             assertTrue("expecting missing mobile number", e.getMessage().contains(INVALID_MOBILE_NUMBER));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Valid_With_11_Digits() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"12345678901\"}";
+    public void jsonOnMobileConfirmationIsValidWith11Digits() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"12345678901\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Valid_With_15_Digits() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"111111111111111\"}";
+    public void jsonOnMobileConfirmationIsValidWith15Digits() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"111111111111111\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Invalid_With_21_Digits() {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"111111111111111111111\"}";
+    public void jsonOnMobileConfirmationIsInvalidWith21Digits() {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"111111111111111111111\"}";
         try {
             validatorUnderTest.validateAndTranslateMobileConfirmation(json);
             fail("should have thrown invalid mobile number error");
         } catch (ImagePayloadException e) {
             assertTrue("expecting missing mobile number", e.getMessage().contains(INVALID_MOBILE_NUMBER));
-            e.printStackTrace();
         }
     }
 
 
     @Test
-    public void json_On_Mobile_Confirmation_Is_Invalid_With_Plus_Mid_String() {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"01139+99999\"}";
+    public void jsonOnMobileConfirmationIsInvalidWithPlusMidString() {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"01139+99999\"}";
         try {
             validatorUnderTest.validateAndTranslateMobileConfirmation(json);
             fail("should have thrown invalid mobile number error");
         } catch (ImagePayloadException e) {
             assertTrue("expecting missing mobile number", e.getMessage().contains(INVALID_MOBILE_NUMBER));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_With_No_String_Is_Valid() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"\"}";
+    public void jsonOnMobileConfirmationWithNoStringIsValid() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_With_No_Second_Data() throws ImagePayloadException {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\"}";
+    public void jsonOnMobileConfirmationWithNoSecondData() throws ImagePayloadException {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\"}";
         ImagePayload imagePayload = validatorUnderTest.validateAndTranslateMobileConfirmation(json);
-        assertEquals(imagePayload.getSessionId(), SessionID);
+        assertEquals(imagePayload.getSessionId(), sessionId);
     }
 
     @Test
-    public void json_On_Mobile_Confirmation_With_Mobile_Number_As_Text() {
-        String SessionID = "10";
-        String json = "{\"sessionId\":\"" + SessionID + "\",\"mobileNumber\":\"A test message that should fail\"}";
+    public void jsonOnMobileConfirmationWithMobileNumberAsText() {
+        String sessionId = "10";
+        String json = "{\"sessionId\":\"" + sessionId + "\",\"mobileNumber\":\"A test message that should fail\"}";
 
         try {
             validatorUnderTest.validateAndTranslateMobileConfirmation(json);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(INVALID_MOBILE_NUMBER));
-            e.printStackTrace();
         }
     }
 
 
     @Test
-    public void empty_SessionId_On_Declaration_Throws_Exception() {
+    public void emptySessionIdOnDeclarationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateDeclaration("{\"sessionId\":\"\",\"accepted\" : false}");
             fail("Should have thrown a DeclarationException");
         } catch (DeclarationException e) {
             assertTrue("Expecting a DeclarationException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void invalid_Json_On_Declaration_Throws_Exception() {
+    public void invalidJsonOnDeclarationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateDeclaration("Invalid json");
             fail("Should have thrown a DeclarationException");
         } catch (DeclarationException e) {
             assertTrue("Expecting a DeclarationException", e.getMessage().contains("JsonParseException"));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void null_Json_On_Declaration_Throws_Exception() {
+    public void nullJsonOnDeclarationThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateDeclaration(null);
             fail("Should have thrown a DeclarationException");
         } catch (DeclarationException e) {
             assertTrue("Expecting a DeclarationException", e.getMessage().contains(NO_JSON));
-            e.printStackTrace();
         }
     }
 
@@ -332,94 +316,87 @@ public class JsonValidatorTest extends JsonValidator {
     }
 
     @Test
-    public void empty_SessionId_On_Address_Throws_Exception() {
+    public void emptySessionIdOnAddressThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateAddress(ADDRESS_MISSING_SESSION_ID);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains("Unrecognized field"));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void empty_Number_On_Address_Throws_Exception() {
+    public void emptyNumberOnAddressThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateAddress(ADDRESS_MISSING_NUMBER);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(MISSING_NUMBER_FROM_ADDRESS));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void houseNameOrNumber_Longer_Than_35_Chars() {
+    public void houseNameOrNumberLongerThan35Chars() {
         try {
             validatorUnderTest.validateAndTranslateAddress(INVALID_HOUSE_LENGTH);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(HOUSE_NUMBER_LENGTH_EXCEPTION));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void streetName_Longer_Than_35_Chars() {
+    public void streetNameLongerThan35Chars() {
         try {
             validatorUnderTest.validateAndTranslateAddress(INVALID_STREET_LENGTH);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(STREET_NAME_LENGTH_EXCEPTION));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void city_Longer_Than_35_Chars() {
+    public void cityLongerThan35Chars() {
         try {
             validatorUnderTest.validateAndTranslateAddress(INVALID_CITY_LENGTH);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(CITY_NAME_LENGTH_EXCEPTION));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void postcode_Longer_Than_35_Chars() {
+    public void postcodeLongerThan35Chars() {
         try {
             validatorUnderTest.validateAndTranslateAddress(INVALID_POSTCODE_LENGTH);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(POSTCODE_VALIDATION_FAILED));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void empty_Street_On_Address_Does_Not_Throw_Exception() throws NewAddressException {
+    public void emptyStreetOnAddressDoesNotThrowException() throws NewAddressException {
         validatorUnderTest.validateAndTranslateAddress(ADDRESS_MISSING_STREET);
     }
 
     @Test
-    public void empty_City_On_Address_Does_Not_Throw_Exception() throws NewAddressException {
+    public void emptyCityOnAddressDoesNotThrowException() throws NewAddressException {
         validatorUnderTest.validateAndTranslateAddress(ADDRESS_MISSING_CITY);
     }
 
     @Test
-    public void empty_Postcode_On_Address_Throws_Exception() {
+    public void emptyPostcodeOnAddressThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateAddress(ADDRESS_MISSING_POSTCODE);
             fail("Should have thrown a NewAddressException");
         } catch (NewAddressException e) {
             assertTrue("Expecting a NewAddressException", e.getMessage().contains(POSTCODE_VALIDATION_FAILED));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void valid_Json_Returns_Correct_Address() throws NewAddressException {
+    public void validJsonReturnsCorrectAddress() throws NewAddressException {
         Address addressReturned = validatorUnderTest.validateAndTranslateAddress(VALID_ADDRESS);
         assertThat(addressReturned.getSessionId(), is("123456"));
         assertThat(addressReturned.getHouseNameOrNumber(), is("254"));
@@ -430,44 +407,41 @@ public class JsonValidatorTest extends JsonValidator {
 
 
     @Test
-    public void valid_QR_Submission_Returns_Payload() throws ImagePayloadException {
+    public void validQRSubmissionReturnsPayload() throws ImagePayloadException {
         ImagePayload payload = validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_VALID);
-        assertThat(payload, is(NotNull.NOT_NULL));
+        assertNotNull(payload);
         assertThat(payload.getSessionId(), is("123456"));
-        assertThat(payload.getBarcodeImage(), is(NotNull.NOT_NULL));
+        assertThat(payload.getBarcodeImage(), is(equalTo(ENCODED_DATAMATRIX_STRING)));
     }
 
     @Test
-    public void empty_SessionId_On_QR_Submission_Throws_Exception() {
+    public void emptySessionIdOnQRSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_EMPTY_SESSION_ID);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 
     @Test
-    public void missing_SessionId_On_QR_Submission_Throws_Exception() {
+    public void missingSessionIdOnQRSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_MISSING_SESSION_ID);
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
 
     }
 
     @Test
-    public void invalid_Json_On_QR_Submission_Throws_Exception() {
+    public void invalidJsonOnQRSubmissionThrowsException() {
         try {
             validatorUnderTest.validateAndTranslateBarcodeSubmission("{}");
             fail("Should have thrown an ImagePayloadException");
         } catch (ImagePayloadException e) {
             assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-            e.printStackTrace();
         }
     }
 

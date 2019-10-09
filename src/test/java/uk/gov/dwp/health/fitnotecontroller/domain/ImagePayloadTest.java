@@ -1,5 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
@@ -15,7 +16,7 @@ import static org.junit.Assert.assertThat;
 public class ImagePayloadTest {
 
     @Test
-    public void validateNinoIsCorrectlySerialised() throws Exception {
+    public void validateNinoIsCorrectlySerialised() throws JsonProcessingException {
         String expectedResult = "{\"ninoSuffix\":\"A\",\"ninoBody\":\"AA370773\"}";
         ImagePayload instance = new ImagePayload();
         instance.setNino("AA370773A");

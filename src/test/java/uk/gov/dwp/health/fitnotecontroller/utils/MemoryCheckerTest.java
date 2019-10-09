@@ -1,11 +1,10 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
 import org.junit.Before;
-import uk.gov.dwp.health.fitnotecontroller.utils.MemoryChecker;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;

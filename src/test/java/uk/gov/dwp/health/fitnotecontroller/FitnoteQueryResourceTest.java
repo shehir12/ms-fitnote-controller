@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
@@ -20,12 +20,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
+@SuppressWarnings("squid:S1192") // allow string literals
 public class FitnoteQueryResourceTest {
     private static final String ERROR_MSG = "Unable to process request";
 
@@ -71,7 +73,7 @@ public class FitnoteQueryResourceTest {
 
     @Test
     public void validateNinoEmptyJsonRejects400() throws ImagePayloadException, IOException, CryptoException {
-        when(imageStorage.getPayload(anyString())).thenThrow(new ImagePayloadException("Null sessionId rejected"));
+        when(imageStorage.getPayload(eq(null))).thenThrow(new ImagePayloadException("Null sessionId rejected"));
         Response response = instance.queryNino("{}");
 
         assertThat("should get 400", response.getStatus(), is(equalTo(HttpStatus.SC_BAD_REQUEST)));
@@ -82,7 +84,7 @@ public class FitnoteQueryResourceTest {
 
     @Test
     public void validateAddressEmptyJsonRejects400() throws ImagePayloadException, IOException, CryptoException {
-        when(imageStorage.getPayload(anyString())).thenThrow(new ImagePayloadException("Null sessionId rejected"));
+        when(imageStorage.getPayload(eq(null))).thenThrow(new ImagePayloadException("Null sessionId rejected"));
         Response response = instance.queryAddress("{}");
 
         assertThat("should get 400", response.getStatus(), is(equalTo(HttpStatus.SC_BAD_REQUEST)));
@@ -93,7 +95,7 @@ public class FitnoteQueryResourceTest {
 
     @Test
     public void validateMobileEmptyJsonRejects400() throws ImagePayloadException, IOException, CryptoException {
-        when(imageStorage.getPayload(anyString())).thenThrow(new ImagePayloadException("Null sessionId rejected"));
+        when(imageStorage.getPayload(eq(null))).thenThrow(new ImagePayloadException("Null sessionId rejected"));
         Response response = instance.queryMobile("{}");
 
         assertThat("should get 400", response.getStatus(), is(equalTo(HttpStatus.SC_BAD_REQUEST)));

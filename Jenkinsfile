@@ -3,7 +3,7 @@ node {
 
 	buildJava {
         projectName = 'fitnote'
-        componentName = 'ms-fitnote-controller'
+        componentName = 'controller'
 
 		buildGoals = [
 			"org.jacoco:jacoco-maven-plugin:prepare-agent"

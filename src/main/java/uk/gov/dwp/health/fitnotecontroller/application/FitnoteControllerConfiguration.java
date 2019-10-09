@@ -4,26 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Configuration;
 import uk.gov.dwp.crypto.SecureStrings;
 import uk.gov.dwp.health.crypto.CryptoConfig;
+import uk.gov.dwp.health.messageq.amazon.items.AmazonConfigBase;
 
 import javax.crypto.SealedObject;
 import javax.validation.constraints.NotNull;
-import java.net.URI;
 import java.util.List;
 
 public class FitnoteControllerConfiguration extends Configuration {
     private SecureStrings cipher = new SecureStrings();
-
-    @JsonProperty("rabbitMqTruststoreFile")
-    private String rabbitMqTruststoreFile;
-
-    @JsonProperty("rabbitMqKeystoreFile")
-    private String rabbitMqKeystoreFile;
-
-    @JsonProperty("rabbitMqTruststorePass")
-    private SealedObject rabbitMqTruststorePass;
-
-    @JsonProperty("rabbitMqKeystorePass")
-    private SealedObject rabbitMqKeystorePass;
 
     @NotNull
     @JsonProperty("sessionExpiryTimeInSeconds")
@@ -87,6 +75,9 @@ public class FitnoteControllerConfiguration extends Configuration {
     @JsonProperty("contrastCutOff")
     private int contrastCutOff = 105;
 
+    @JsonProperty("ocrVerticalSlice")
+    private int ocrVerticalSlice = 6;
+
     @NotNull
     @JsonProperty("topLeftText")
     private List<String> topLeftText;
@@ -107,27 +98,30 @@ public class FitnoteControllerConfiguration extends Configuration {
     private int estimatedRequestMemoryMb = 25;
 
     @NotNull
-    @JsonProperty("rabbitMqURI")
-    private URI rabbitMqURI;
+    @JsonProperty("snsTopicName")
+    private String snsTopicName;
 
     @NotNull
-    @JsonProperty("rabbitEventRoutingKey")
-    private String rabbitEventRoutingKey;
+    @JsonProperty("snsRoutingKey")
+    private String snsRoutingKey;
 
     @NotNull
-    @JsonProperty("rabbitExchangeName")
-    private String rabbitExchangeName;
+    @JsonProperty("snsSubject")
+    private String snsSubject;
+
+    @JsonProperty("snsEncryptMessages")
+    private boolean snsEncryptMessages = true;
 
     @NotNull
-    @JsonProperty("rabbitEncryptMessages")
-    private boolean rabbitEncryptMessages;
+    @JsonProperty("snsConfiguration")
+    private AmazonConfigBase snsConfiguration;
 
     @NotNull
     @JsonProperty("redisEncryptMessages")
     private boolean redisEncryptMessages;
 
-    @JsonProperty("rabbitKmsCryptoConfiguration")
-    private CryptoConfig rabbitKmsCryptoConfiguration;
+    @JsonProperty("snsKmsCryptoConfiguration")
+    private CryptoConfig snsKmsCryptoConfiguration;
 
     @JsonProperty("redisKmsCryptoConfiguration")
     private CryptoConfig redisKmsCryptoConfiguration;
@@ -208,50 +202,6 @@ public class FitnoteControllerConfiguration extends Configuration {
         return pdfScanDPI;
     }
 
-    public URI getRabbitMqURI() {
-        return rabbitMqURI;
-    }
-
-    public String getRabbitEventRoutingKey() {
-        return rabbitEventRoutingKey;
-    }
-
-    public String getRabbitExchangeName() {
-        return rabbitExchangeName;
-    }
-
-    public boolean isRabbitEncryptMessages() {
-        return rabbitEncryptMessages;
-    }
-
-    public CryptoConfig getRabbitKmsCryptoConfiguration() {
-        return rabbitKmsCryptoConfiguration;
-    }
-
-    public String getRabbitMqTruststoreFile() {
-        return rabbitMqTruststoreFile;
-    }
-
-    public String getRabbitMqKeystoreFile() {
-        return rabbitMqKeystoreFile;
-    }
-
-    public String getRabbitMqTruststorePass() {
-        return cipher.revealString(rabbitMqTruststorePass);
-    }
-
-    public String getRabbitMqKeystorePass() {
-        return cipher.revealString(rabbitMqKeystorePass);
-    }
-
-    public void setRabbitMqTruststorePass(String rabbitMqTruststorePass) {
-        this.rabbitMqTruststorePass = cipher.sealString(rabbitMqTruststorePass);
-    }
-
-    public void setRabbitMqKeystorePass(String rabbitMqKeystorePass) {
-        this.rabbitMqKeystorePass = cipher.sealString(rabbitMqKeystorePass);
-    }
-
     public int getMaxAllowedImageReplay() {
         return maxAllowedImageReplay;
     }
@@ -282,5 +232,33 @@ public class FitnoteControllerConfiguration extends Configuration {
 
     public long getImageReplayExpirySeconds() {
         return imageReplayExpirySeconds;
+    }
+
+    public String getSnsTopicName() {
+        return snsTopicName;
+    }
+
+    public String getSnsRoutingKey() {
+        return snsRoutingKey;
+    }
+
+    public String getSnsSubject() {
+        return snsSubject;
+    }
+
+    public boolean isSnsEncryptMessages() {
+        return snsEncryptMessages;
+    }
+
+    public AmazonConfigBase getSnsConfiguration() {
+        return snsConfiguration;
+    }
+
+    public CryptoConfig getSnsKmsCryptoConfiguration() {
+        return snsKmsCryptoConfiguration;
+    }
+
+    public int getOcrVerticalSlice() {
+        return ocrVerticalSlice;
     }
 }

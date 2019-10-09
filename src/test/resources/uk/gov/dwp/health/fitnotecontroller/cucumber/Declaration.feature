@@ -3,8 +3,8 @@ Feature: Fitnote declaration
     @FitnoteDeclarationTest
     Scenario: Submit an accepted declaration with all mandatory session data present
       Given the http client is up
-      And I create a rabbit exchange named "rabbit.fitnote.ex"
-      And I create a NON-DURABLE catch all subscription for queue name "test.queue.1" binding to exchange "rabbit.fitnote.ex"
+      And I create a sns topic named "fitnote-topic-exchange"
+      And I create a catch all subscription for queue name "test-1" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
       When I hit the service url "http://localhost:9101/photo" with the following json body
         | sessionId         | "11"                 |
         | image             | /OcrTest.jpg        |
@@ -33,8 +33,8 @@ Feature: Fitnote declaration
       | sessionId      | "11" |
       | accepted       | true |
       Then I receive a HTTP response of 200
-      And a message is successfully consumed from the queue and there are 0 pending message left on queue "test.queue.1"
-      And the message has a correlation id and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
+      And a message is successfully removed from the queue, there were a total of 1 messages on queue "test-1"
+      And the message has a correlation id, delivery mode PERSISTENT and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
         | nino              | "AA370773"          |
         | houseNameOrNumber | "254"                |
         | postcode          | "NE12 9PG"           |
@@ -43,8 +43,8 @@ Feature: Fitnote declaration
   @FitnoteDeclarationTest
   Scenario: Submit a declined declaration with all mandatory session data present
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.2" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-2" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | sessionId         | "12"                 |
       | image             | /OcrTest.jpg        |
@@ -66,13 +66,13 @@ Feature: Fitnote declaration
       | sessionId      | "12"   |
       | accepted       | false  |
     Then I receive a HTTP response of 400
-    And there are no pending messages on queue "test.queue.2"
+    And there are no pending messages on queue "test-2"
 
   @FitnoteDeclarationTest
   Scenario: Submit an accepted declaration with session missing fitnote image
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.3" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-3" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/nino" with the following json body
       | sessionId         | "13"                 |
       | nino              | "AA370773"          |
@@ -90,13 +90,13 @@ Feature: Fitnote declaration
       | sessionId      | "13"   |
       | accepted       | true   |
     Then I receive a HTTP response of 400
-    And there are no pending messages on queue "test.queue.3"
+    And there are no pending messages on queue "test-3"
 
   @FitnoteDeclarationTest
   Scenario: Submit an accepted declaration with session missing an address
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.4" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-4" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | sessionId         | "14"                 |
       | image             | /OcrTest.jpg        |
@@ -118,13 +118,13 @@ Feature: Fitnote declaration
       | sessionId      | "14"   |
       | accepted       | true   |
     Then I receive a HTTP response of 400
-    And there are no pending messages on queue "test.queue.4"
+    And there are no pending messages on queue "test-4"
 
   @FitnoteDeclarationTest
   Scenario: Submit an accepted declaration with session missing NINO
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.5" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-5" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | sessionId         | "16"                 |
       | image             | /OcrTest.jpg        |
@@ -133,13 +133,13 @@ Feature: Fitnote declaration
       | sessionId      | "16"   |
       | accepted       | true  |
     Then I receive a HTTP response of 400
-    And there are no pending messages on queue "test.queue.5"
+    And there are no pending messages on queue "test-5"
 
   @FitnoteDeclarationTest
   Scenario: Submit invalid json as declaration
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.6" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-6" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | sessionId         | "17"                 |
       | image             | /OcrTest.jpg        |
@@ -160,15 +160,15 @@ Feature: Fitnote declaration
     When I hit the service url "http://localhost:9101/declaration" with the following json body
       |||
     Then I receive a HTTP response of 400
-    And there are no pending messages on queue "test.queue.6"
+    And there are no pending messages on queue "test-6"
     And I hit the service url "http://localhost:9101/imagestatus" with session id "17" getting return status 200 and finally containing the following json body
       | fitnoteStatus | SUCCEEDED |
 
   @FitnoteDeclarationTest
   Scenario: Submit multiple accepted declarations with all mandatory session data present
     Given the http client is up
-    And I create a rabbit exchange named "rabbit.fitnote.ex"
-    And I create a NON-DURABLE catch all subscription for queue name "test.queue.7" binding to exchange "rabbit.fitnote.ex"
+    And I create a sns topic named "fitnote-topic-exchange"
+    And I create a catch all subscription for queue name "test-7" binding to topic "fitnote-topic-exchange" with msg visibility timeout of 2 seconds
     When I hit the service url "http://localhost:9101/photo" with the following json body
       | sessionId         | "22"                 |
       | image             | /OcrTest.jpg        |
@@ -229,16 +229,17 @@ Feature: Fitnote declaration
       | sessionId      | "22" |
       | accepted       | true |
     Then I receive a HTTP response of 200
-    And a message is successfully consumed from the queue and there are 1 pending message left on queue "test.queue.7"
-    And the message has a correlation id and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
+    And a message is successfully removed from the queue, there were a total of 2 messages on queue "test-7"
+    And the message has a correlation id, delivery mode PERSISTENT and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
       | nino              | "AA370773"          |
       | houseNameOrNumber | "88"                |
       | postcode          | "LS6 9PG"           |
-      | sessionId         | "23"                 |
-    And a message is successfully consumed from the queue and there are 0 pending message left on queue "test.queue.7"
-    And the message has a correlation id and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
+      | sessionId         | "23"                |
+    Then I wait 4 seconds for the visibility timeout to expire
+    And a message is successfully removed from the queue, there were a total of 1 messages on queue "test-7"
+    And the message has a correlation id, delivery mode PERSISTENT and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId
       | nino              | "AA370773"          |
       | houseNameOrNumber | "254"                |
       | postcode          | "NE12 9PG"           |
       | sessionId         | "22"                 |
-    And there are no pending messages on queue "test.queue.7"
+    And there are no pending messages on queue "test-7"

@@ -1,6 +1,5 @@
 package uk.gov.dwp.health.fitnotecontroller.domain;
 
-import uk.gov.dwp.health.fitnotecontroller.domain.BarcodeContents;
 import uk.gov.dwp.health.fitnotecontroller.exception.QRExtractionException;
 import org.junit.Test;
 
@@ -14,10 +13,10 @@ import static org.junit.Assert.fail;
 
 public class BarcodeContentsTest {
 
-    private static String FULL_QR_BAD_DATE_CODE = "21012016|2101216|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|1|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
-    private static String FULL_QR_BAD_BOOL_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|2|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
-    private static String FULL_QR_NULL_BOOL_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress||0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
-    private static String FULL_QR_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|1|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
+    private static final String FULL_QR_BAD_DATE_CODE = "21012016|2101216|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|1|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
+    private static final String FULL_QR_BAD_BOOL_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|2|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
+    private static final String FULL_QR_NULL_BOOL_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress||0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
+    private static final String FULL_QR_CODE = "21012016|21012016|Mr|Mickey||Mouse-TestPatient|1 Ouchthorpe La|WF1 3SP|01011990|Stress|1|0|0|0|0|0|14|21012016|04022016|0|BABD5A50-C026-11E5-A|0|The Grove Surgery|Thornhill Stree|WF1 1PG|01924784101";
 
     @Test
     public void testNullString() {
@@ -70,7 +69,6 @@ public class BarcodeContentsTest {
             fail("a full qr code with null booleans should always fail");
 
         } catch (QRExtractionException e) {
-            System.out.println();
             assertThat("error should be an invalid cast", e.getMessage().contains("cast exception"), is(true));
         }
     }

@@ -19,12 +19,17 @@ public class PdfImageExtractor {
     }
 
     public static byte[] extractImage(byte[] incomingObject, int scanDPI) throws ImagePayloadException {
+        byte[] extractedImage = null;
+        PDDocument document = null;
+
         if (incomingObject == null) {
             throw new ImagePayloadException("incoming byte array cannot be null");
         }
+        if (scanDPI <= 0) {
+            LOG.debug("scanDPI must be a positive integer, {} is not valid", scanDPI);
+            return extractedImage;
+        }
 
-        byte[] extractedImage = null;
-        PDDocument document = null;
         try {
 
             LOG.debug("loading and rendering pdf in order to copy page to image");

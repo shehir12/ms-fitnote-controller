@@ -1,9 +1,10 @@
 package uk.gov.dwp.health.fitnotecontroller.application;
 
+import com.amazonaws.services.sns.model.MessageAttributeValue;
 import io.lettuce.core.cluster.RedisClusterClient;
 import uk.gov.dwp.health.crypto.CryptoDataManager;
+import uk.gov.dwp.health.crypto.MessageEncoder;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
-import uk.gov.dwp.health.crypto.rabbitmq.MessageEncoder;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteAddressResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteConfirmationResource;
 import uk.gov.dwp.health.fitnotecontroller.FitnoteDeclarationResource;
@@ -12,7 +13,7 @@ import uk.gov.dwp.health.fitnotecontroller.FitnoteSubmitResource;
 import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
 import io.dropwizard.Application;
 import io.dropwizard.setup.Environment;
-import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
+import uk.gov.dwp.health.messageq.amazon.sns.MessagePublisher;
 
 public class FitnoteControllerApplication extends Application<FitnoteControllerConfiguration> {
 
@@ -24,12 +25,12 @@ public class FitnoteControllerApplication extends Application<FitnoteControllerC
     @Override
     public void run(FitnoteControllerConfiguration fitnoteControllerConfiguration, Environment environment) throws Exception {
 
-        CryptoDataManager rabbitMqKmsCrypto = null;
-        if ((fitnoteControllerConfiguration.isRabbitEncryptMessages()) && (null == fitnoteControllerConfiguration.getRabbitKmsCryptoConfiguration())) {
-            throw new CryptoException("RabbitEncryptMessages is TRUE.  Cannot encrypt without a valid 'rabbitKmsCryptoConfiguration' configuration item");
+        CryptoDataManager mqKmsCrypto = null;
+        if ((fitnoteControllerConfiguration.isSnsEncryptMessages()) && (null == fitnoteControllerConfiguration.getSnsKmsCryptoConfiguration())) {
+            throw new CryptoException("SnsEncryptMessages is TRUE.  Cannot encrypt without a valid 'snsKmsCryptoConfiguration' configuration item");
 
-        } else if (fitnoteControllerConfiguration.isRabbitEncryptMessages()) {
-            rabbitMqKmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getRabbitKmsCryptoConfiguration());
+        } else if (fitnoteControllerConfiguration.isSnsEncryptMessages()) {
+            mqKmsCrypto = new CryptoDataManager(fitnoteControllerConfiguration.getSnsKmsCryptoConfiguration());
         }
 
         CryptoDataManager redisMqKmsCrypto = null;
@@ -43,15 +44,14 @@ public class FitnoteControllerApplication extends Application<FitnoteControllerC
         final RedisClusterClient redisClient = RedisClusterClient.create(fitnoteControllerConfiguration.getRedisStoreURI());
         final ImageStorage imageStorage = new ImageStorage(fitnoteControllerConfiguration, redisClient, redisMqKmsCrypto);
 
-        final PublishSubscribe rabbitMqPublisher = new PublishSubscribe(new MessageEncoder(rabbitMqKmsCrypto), fitnoteControllerConfiguration.getRabbitMqURI());
-        rabbitMqPublisher.setTruststoreCredentials(fitnoteControllerConfiguration.getRabbitMqTruststoreFile(), fitnoteControllerConfiguration.getRabbitMqTruststorePass());
-        rabbitMqPublisher.setKeystoreCredentials(fitnoteControllerConfiguration.getRabbitMqKeystoreFile(), fitnoteControllerConfiguration.getRabbitMqKeystorePass());
+        final MessageEncoder<MessageAttributeValue> messageEncoder = new MessageEncoder<>(mqKmsCrypto, MessageAttributeValue.class);
+        final MessagePublisher snsPublisher = new MessagePublisher(messageEncoder, fitnoteControllerConfiguration.getSnsConfiguration());
 
         final FitnoteSubmitResource resource = new FitnoteSubmitResource(fitnoteControllerConfiguration, imageStorage);
         final FitnoteConfirmationResource confirmationResource = new FitnoteConfirmationResource(imageStorage);
         final FitnoteAddressResource addressResource = new FitnoteAddressResource(imageStorage);
         final FitnoteQueryResource queryResource = new FitnoteQueryResource(imageStorage);
-        final FitnoteDeclarationResource declarationResource = new FitnoteDeclarationResource(imageStorage, rabbitMqPublisher, fitnoteControllerConfiguration);
+        final FitnoteDeclarationResource declarationResource = new FitnoteDeclarationResource(imageStorage, snsPublisher, fitnoteControllerConfiguration);
 
         environment.jersey().register(resource);
         environment.jersey().register(confirmationResource);

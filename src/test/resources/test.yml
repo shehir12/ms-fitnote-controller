@@ -16,19 +16,22 @@ imageHashSalt: salty
 
 redisStoreURI: redis://localhost:7000
 
-rabbitMqURI: amqp://system:manager@localhost:9105
-rabbitEventRoutingKey: incoming.submission.fn
-rabbitExchangeName: rabbit.fitnote.ex
-rabbitEncryptMessages: false
+snsTopicName: fitnote-topic-exchange
+snsRoutingKey: sns.fitnote.new
+snsSubject: fitnote-controller
+snsEncryptMessages: false
 
-rabbitMqTruststoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ts
-rabbitMqKeystoreFile: src/test/resources/tls/fitnote-controller-to-drs-queue-service-client.ks
-rabbitMqTruststorePass: password
-rabbitMqKeystorePass: password
+snsConfiguration:
+  s3EndpointOverride: "http://localhost:4572"
+  endpointOverride: "http://localhost:4575"
+  largePayloadSupportEnabled: true
+  pathStyleAccessEnabled: true
+  s3BucketName: "sns-bucket"
+  region: US_EAST_1
 
 ocrChecksEnabled: true
 forceLandscapeImageSubmission: false
-tesseractFolderPath: src/main/properties
+tesseractFolderPath: src/main/properties/tessdata
 
 rejectingOversizeImages: true
 targetImageSizeKB: 500
@@ -44,6 +47,7 @@ maxLogChars: 50
 targetBrightness: 178
 borderLossPercentage: 10
 contrastCutOff: 105
+ocrVerticalSlice: 6
 
 estimatedRequestMemoryMb: 0
 
@@ -59,4 +63,6 @@ baseRightText:
   - "beginning to end"
 
 logging:
-  type: external
+  level: INFO
+  loggers:
+    "uk.gov": DEBUG

@@ -17,10 +17,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import uk.gov.dwp.health.fitnotecontroller.redis.RedisTestClusterManager;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -31,11 +30,12 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
+@SuppressWarnings("squid:S1192") // allow string literals
 public class ImageStorageTest {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final long SYSTEM_TIME_FAKE_VALUE = 0;
@@ -56,8 +56,8 @@ public class ImageStorageTest {
 
     @Before
     public void setup() throws CryptoException {
-        when(configuration.getImageReplayExpirySeconds()).thenReturn(new Long(3));
-        when(configuration.getSessionExpiryTimeInSeconds()).thenReturn(new Long(3));
+        when(configuration.getImageReplayExpirySeconds()).thenReturn(3L);
+        when(configuration.getSessionExpiryTimeInSeconds()).thenReturn(3L);
         when(configuration.getMaxAllowedImageReplay()).thenReturn(2);
         when(configuration.getImageHashSalt()).thenReturn("salt");
 
@@ -360,7 +360,7 @@ public class ImageStorageTest {
     }
 
     @Test
-    public void testHashGetsExpiredInsteadOfReplayLimit() throws ImageHashException, InterruptedException, IOException, NoSuchAlgorithmException, CryptoException {
+    public void testHashGetsExpiredInsteadOfReplayLimit() throws ImageHashException, InterruptedException {
         ImageStorage localInstance = new ImageStorage(configuration, redisClient, cryptoDataManager);
         String input = "i-am-an-image";
 

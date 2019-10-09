@@ -8,13 +8,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertTrue;
 
 public class RedisTestClusterManager {
-    private static final String DOCKER_IMAGE_NAME = "nexus.mgmt.health-dev.dwpcloud.uk:5000/grokzen/redis-cluster";
+    private static final String DOCKER_IMAGE_NAME = "nexus.service.health-dev.dwpcloud.uk:5000/grokzen/redis-cluster";
     private static final Logger LOG = LoggerFactory.getLogger(RedisTestClusterManager.class.getName());
 
     private static final String[] DOCKER_RUN_COMMAND = {"docker", "run", "--rm", "--name", "redis_test_integ", "-p", "7000-7005:7000-7005", "--env", "CLUSTER_ONLY=true", "--env", "IP=0.0.0.0", DOCKER_IMAGE_NAME};
@@ -25,7 +26,7 @@ public class RedisTestClusterManager {
         // prevent instantiation
     }
 
-    public static void startupRedisCluster() throws IOException, InterruptedException {
+    public static void startupRedisCluster() throws IOException {
         ProcessBuilder runProcess = new ProcessBuilder(commandBuilder(DOCKER_RUN_COMMAND));
         LOG.info("running docker start for redis-cluster");
 
@@ -43,10 +44,10 @@ public class RedisTestClusterManager {
         terminate.waitFor();
     }
 
-    private static void checkRedisUp(File output) throws IOException, InterruptedException {
+    private static void checkRedisUp(File output) throws IOException {
         PollingWait wait = new PollingWait().timeoutAfter(30, SECONDS).pollEvery(1, SECONDS);
 
-        if (FileUtils.readFileToString(output, "UTF-8").contains("The container name \"/redis_test_integ\" is already in use")) {
+        if (FileUtils.readFileToString(output, StandardCharsets.UTF_8.toString()).contains("The container name \"/redis_test_integ\" is already in use")) {
             throw new IOException("The container name \"/redis_test_integ\" is already in use, docker will shutdown the container and exit, ready for re-run");
         }
 
@@ -54,7 +55,7 @@ public class RedisTestClusterManager {
             @Override
             public void run() throws Exception {
                 LOG.info("checking redis cluster status...");
-                assertTrue("checking redis cluster status", FileUtils.readFileToString(output, "UTF-8").contains("/var/log/supervisor/redis-6.log"));
+                assertTrue("checking redis cluster status", FileUtils.readFileToString(output, StandardCharsets.UTF_8.toString()).contains("/var/log/supervisor/redis-6.log"));
 
                 LOG.info("redis cluster is 'up'.  pausing 3 seconds for clustered nodes to accept connections");
                 TimeUnit.SECONDS.sleep(3); // to ensure all ports are open for connections

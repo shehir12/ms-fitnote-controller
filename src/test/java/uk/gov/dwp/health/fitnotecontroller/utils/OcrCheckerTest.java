@@ -4,12 +4,11 @@ import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfigur
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import gherkin.deps.net.iharder.Base64;
-import uk.gov.dwp.health.fitnotecontroller.utils.OcrChecker;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -18,10 +17,10 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -44,13 +43,14 @@ public class OcrCheckerTest {
         baseRightList.add("Performance Platform");
         baseRightList.add("beginning to end");
 
-        when(mockConfig.getTesseractFolderPath()).thenReturn("src/main/properties");
+        when(mockConfig.getTesseractFolderPath()).thenReturn("src/main/properties/tessdata");
         when(mockConfig.getBorderLossPercentage()).thenReturn(10);
         when(mockConfig.getMaxLogChars()).thenReturn(2000);
         when(mockConfig.getTargetBrightness()).thenReturn(179);
         when(mockConfig.getDiagonalTarget()).thenReturn(20);
         when(mockConfig.getHighTarget()).thenReturn(100);
         when(mockConfig.getContrastCutOff()).thenReturn(105);
+        when(mockConfig.getOcrVerticalSlice()).thenReturn(6);
         when(mockConfig.getTopLeftText()).thenReturn(topLeftList);
         when(mockConfig.getTopRightText()).thenReturn(topRightList);
         when(mockConfig.getBaseLeftText()).thenReturn(baseLeftList);
@@ -88,7 +88,7 @@ public class OcrCheckerTest {
     }
 
     @Test
-    public void rightHandSidePageIs_NOT_ACCEPTED() throws IOException {
+    public void rightHandSidePageIsNotAccepted() throws IOException {
         assertThat(checker.imageContainsReadableText(getTestImage("/OcrTest_RHS.jpg")), is(equalTo(ExpectedFitnoteFormat.Status.FAILED)));
     }
 
@@ -118,7 +118,8 @@ public class OcrCheckerTest {
         ImagePayload payload = getTestImage("/FullPage_Portrait.jpg");
         try {
             checker.imageContainsReadableText(payload);
-            assertFalse(true);//should never get here!
+            fail("should throw an error");
+
         } catch (IOException e) {
             assertTrue(e.getMessage().contains("the tessdata configuration file could not be found in"));
         }

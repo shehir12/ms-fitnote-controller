@@ -1,7 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
 import uk.gov.dwp.health.fitnotecontroller.exception.FuzzyStringMatchException;
-import uk.gov.dwp.health.fitnotecontroller.utils.FuzzyStringMatch;
 import org.junit.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -20,92 +19,92 @@ public class FuzzyStringMatchTest {
     private static final int PERCENTAGE_HAPPY_WITH = 90;
 
     @Test
-    public void validate_FuzzyStringContains_Returns_100_With_SingleMatch_Char() throws FuzzyStringMatchException {
+    public void validateFuzzyStringContainsReturns100WithSingleMatchChar() throws FuzzyStringMatchException {
         assertThat("Expecting 100% match", FuzzyStringMatch.fuzzyStringContains("a", "a"), is(equalTo(100)));
     }
 
     @Test(expected = FuzzyStringMatchException.class)
-    public void validate_FuzzyStringContains_Throws_Exception_When_Given_Null() throws FuzzyStringMatchException {
+    public void validateFuzzyStringContainsThrowsExceptionWhenGivenNull() throws FuzzyStringMatchException {
         FuzzyStringMatch.fuzzyStringContains(null, "lookingFor");
     }
 
     @Test(expected = FuzzyStringMatchException.class)
-    public void validate_FuzzyStringContains_Throws_Exception_When_Given_Second_Null() throws FuzzyStringMatchException {
+    public void validateFuzzyStringContainsThrowsExceptionWhenGivenSecondNull() throws FuzzyStringMatchException {
         FuzzyStringMatch.fuzzyStringContains("inspected", null);
     }
 
     @Test
-    public void validate_FuzzyStringValid_Returns_True_Given_70Pct_String() throws Exception {
+    public void validateFuzzyStringValidReturnsTrueGiven70PctString() throws FuzzyStringMatchException {
         assertTrue(FuzzyStringMatch.fuzzyStringValid(SEVENTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND, 70));
     }
 
     @Test
-    public void validate_FuzzyStringValid_Returns_False_Given_71_Char_70Pct_String() throws Exception {
+    public void validateFuzzyStringValidReturnsFalseGiven71Char70PctString() throws FuzzyStringMatchException {
         assertFalse("70% string should fail 71% threshold", FuzzyStringMatch.fuzzyStringValid(SEVENTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND, 71));
     }
 
     @Test
-    public void validate_FuzzyStringValid_Returns_TRUE_Given_90Pct_Same_Length_String() throws Exception {
+    public void validateFuzzyStringValidReturnsTRUEGiven90PctSameLengthString() throws FuzzyStringMatchException {
         assertTrue(FuzzyStringMatch.fuzzyStringValid(NINTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND, PERCENTAGE_HAPPY_WITH));
     }
 
     @Test
-    public void validate_FuzzyStringValid_Returns_TRUE_Given_90Pct_Big_String() throws Exception {
+    public void validateFuzzyStringValidReturnsTRUEGiven90PctBigString() throws FuzzyStringMatchException {
         assertTrue(FuzzyStringMatch.fuzzyStringValid(NINTY_PERCENT_MATCH_BIG_STRING, STRING_TO_FIND, PERCENTAGE_HAPPY_WITH));
     }
 
     @Test
-    public void validate_FuzzyStringContains_Given_KlMnOpQrAbcDe1234S67890fGhIj() throws Exception {
+    public void validateFuzzyStringContainsGivenKlMnOpQrAbcDe1234S67890FGhIj() throws FuzzyStringMatchException {
         assertEquals(90, FuzzyStringMatch.fuzzyStringContains(NINTY_PERCENT_MATCH_BIG_STRING, STRING_TO_FIND));
     }//this contains a string that matches 90%
 
     @Test
-    public void validate_FuzzyStringContains_GivenStuff() throws Exception {
+    public void validateFuzzyStringContainsGivenStuff() throws FuzzyStringMatchException {
         assertEquals(75, FuzzyStringMatch.fuzzyStringContains("aaccccaabbccaaaabbccaabcdaaaabbbbccbbbbbc", "ebcd"));
     }//this contains a string that matches 90%
 
     @Test
-    public void validate_FuzzyStringsMatch_Given_AbcDe12340() throws FuzzyStringMatchException {
+    public void validateFuzzyStringsMatch90GivenAbcDe12340() throws FuzzyStringMatchException {
         assertEquals(90, FuzzyStringMatch.fuzzyStringsMatch(NINTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND));
     }
 
     @Test
-    public void validate_FuzzyStringsMatch_Given_abcde12340() throws FuzzyStringMatchException {
-        assertTrue(FuzzyStringMatch.fuzzyStringsMatch(SEVENTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND) == 70);
+    public void validateFuzzyStringsMatch70GivenAbcDe12340() throws FuzzyStringMatchException {
+        assertThat(FuzzyStringMatch.fuzzyStringsMatch(SEVENTY_PERCENT_MATCH_SAME_LENGTH, STRING_TO_FIND), is(equalTo(70)));
     }
 
     @Test
-    public void verify_IsValidString_Returns_False_Given_Null() {
+    public void verifyIsValidStringReturnsFalseGivenNull() {
         assertFalse(FuzzyStringMatch.isValidString(null));
     }
 
     @Test
-    public void verify_IsValidString_Returns_False_Given_EmptyString() {
-        assertFalse(FuzzyStringMatch.isValidString(new String()));
-    }
-
-    @Test
-    public void verify_IsValidString_Returns_False_Given_Double_Quotes() {
+    public void verifyIsValidStringReturnsFalseGivenEmptyString() {
         assertFalse(FuzzyStringMatch.isValidString(""));
     }
 
     @Test
-    public void verify_IsValidString_Returns_True_Given_ABC() {
+    public void verifyIsValidStringReturnsFalseGivenDoubleQuotes() {
+        assertFalse(FuzzyStringMatch.isValidString(""));
+    }
+
+    @Test
+    public void verifyIsValidStringReturnsTrueGivenABC() {
         assertTrue(FuzzyStringMatch.isValidString("ABC"));
     }
 
     @Test
-    public void verify_replaceInvalidCharacters_Returns_FLOSS_When_Given_Floß_Space() throws Exception {
+    public void verifyReplaceInvalidCharactersReturnsFLOSSWhenGivenFlosCharacter() throws FuzzyStringMatchException {
         assertEquals("Floss", FuzzyStringMatch.replaceInvalidCharacters("Floß "));
     }
 
     @Test
-    public void verify_replaceInvalidCharacters_Returns_Fitnote_When_Given_Fitnoté() throws Exception {
+    public void verifyReplaceInvalidCharactersReturnsFitnoteWhenGivenFitnoteAccent() throws FuzzyStringMatchException {
         assertEquals("Fitnote", FuzzyStringMatch.replaceInvalidCharacters("Fitnoté"));
     }
 
     @Test
-    public void verify_replaceInvalidCharacters() throws Exception {
+    public void verifyReplaceInvalidCharacters() throws FuzzyStringMatchException {
         assertEquals("Fitn te", FuzzyStringMatch.replaceInvalidCharacters("Fitn%té"));
     }
 

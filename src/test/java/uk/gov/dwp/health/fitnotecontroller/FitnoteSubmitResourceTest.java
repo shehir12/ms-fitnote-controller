@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.googlecode.junittoolbox.PollingWait;
 import com.googlecode.junittoolbox.RunnableAssert;
+import org.apache.commons.io.FileUtils;
+import org.junit.BeforeClass;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
@@ -21,29 +23,29 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.ws.rs.core.Response;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.http.HttpStatus.SC_ACCEPTED;
 import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.http.HttpStatus.SC_SERVICE_UNAVAILABLE;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -51,9 +53,13 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
+@SuppressWarnings({"squid:S1192", "squid:S3008", "squid:S00116"}) // allow string literals and naming convention for variables (left for clarity)
 public class FitnoteSubmitResourceTest {
 
     private static final String SESSION = "session1";
+    private static byte[] COMPRESSED_PAGE_LARGE;
+    private static byte[] COMPRESSED_PAGE_FINAL;
+
     private Optional sessionIdParameter = Mockito.mock(Optional.class);
     private static String LANDSCAPE_FITNOTE_IMAGE;
     private static String PORTRAIT_FITNOTE_IMAGE;
@@ -82,19 +88,10 @@ public class FitnoteSubmitResourceTest {
     @Mock
     private ImageCompressor imageCompressor;
 
-    @Before
-    public void setup() throws IOException, ImagePayloadException, ImageCompressException, CryptoException {
-        when(imageCompressor.compressBufferedImage(any(BufferedImage.class), eq(3), eq(false))).thenReturn(new byte[3000]);
-        when(imageCompressor.compressBufferedImage(any(BufferedImage.class), eq(2), eq(true))).thenReturn(new byte[2000]);
-        when(controllerConfiguration.getSessionExpiryTimeInSeconds()).thenReturn(180000L);
-        when(controllerConfiguration.getEstimatedRequestMemoryMb()).thenReturn(3);
-        when(controllerConfiguration.getMaxAllowedImageReplay()).thenReturn(10);
-        when(controllerConfiguration.getScanTargetImageSizeKb()).thenReturn(3);
-        when(controllerConfiguration.getImageHashSalt()).thenReturn("salt");
-        when(controllerConfiguration.getTargetImageSizeKB()).thenReturn(2);
-        when(controllerConfiguration.isGreyScale()).thenReturn(true);
-
-        resourceUnderTest = new FitnoteSubmitResource(controllerConfiguration, validator, ocrChecker, imageStorage, imageCompressor);
+    @BeforeClass
+    public static void init() throws IOException {
+        COMPRESSED_PAGE_LARGE = FileUtils.readFileToByteArray(new File("src/test/resources/EmptyPageBigger.jpg"));
+        COMPRESSED_PAGE_FINAL = FileUtils.readFileToByteArray(new File("src/test/resources/EmptyPage.jpg"));
 
         LANDSCAPE_FITNOTE_IMAGE = Base64.encodeFromFile("src/test/resources/FullPage_Landscape.jpg");
         PORTRAIT_FITNOTE_IMAGE = Base64.encodeFromFile("src/test/resources/FullPage_Portrait.jpg");
@@ -105,6 +102,18 @@ public class FitnoteSubmitResourceTest {
         VALID_JSON = "{\"image\":\"" + LANDSCAPE_FITNOTE_IMAGE + "\",\"sessionId\":\"" + SESSION + "\"}";
         QR_JSON = "{\"barcodeImage\":\"" + FITNOTE_QR_TEST + "\",\"sessionId\":\"" + SESSION + "\"}";
         PDF_JSON = "{\"image\":\"" + PDF_FITNOTE_IMAGE + "\",\"sessionId\":\"" + SESSION + "\"}";
+    }
+
+    @Before
+    public void setup() throws IOException, ImagePayloadException, ImageCompressException, CryptoException {
+        when(imageCompressor.compressBufferedImage(any(BufferedImage.class), eq(3), eq(false))).thenReturn(COMPRESSED_PAGE_LARGE);
+        when(imageCompressor.compressBufferedImage(any(BufferedImage.class), eq(2), eq(true))).thenReturn(COMPRESSED_PAGE_FINAL);
+        when(controllerConfiguration.getEstimatedRequestMemoryMb()).thenReturn(3);
+        when(controllerConfiguration.getScanTargetImageSizeKb()).thenReturn(3);
+        when(controllerConfiguration.getTargetImageSizeKB()).thenReturn(2);
+        when(controllerConfiguration.isGreyScale()).thenReturn(true);
+
+        resourceUnderTest = new FitnoteSubmitResource(controllerConfiguration, validator, ocrChecker, imageStorage, imageCompressor);
 
         when(sessionIdParameter.isPresent()).thenReturn(true);
         when(sessionIdParameter.get()).thenReturn(SESSION);
@@ -169,7 +178,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void failsWhenThereIsNotEnoughMemoryForPhoto() throws ImagePayloadException {
+    public void failsWhenThereIsNotEnoughMemoryForPhoto() {
         when(controllerConfiguration.getEstimatedRequestMemoryMb()).thenReturn(OVER_MAX_MEMORY);
 
         Response response = resourceUnderTest.submitFitnote(PORTRAIT_JSON);
@@ -177,7 +186,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void failsWhenThereIsNotEnoughMemoryForBarcode() throws ImagePayloadException {
+    public void failsWhenThereIsNotEnoughMemoryForBarcode() {
         when(controllerConfiguration.getEstimatedRequestMemoryMb()).thenReturn(OVER_MAX_MEMORY);
 
         Response response = resourceUnderTest.submitBarcode(QR_JSON);
@@ -185,7 +194,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void jsonIsPassedIntoServiceWithOcrEnabledAnd202IsReturned_JPG() throws ImagePayloadException, IOException, CryptoException, InterruptedException, ImageCompressException {
+    public void jsonIsPassedIntoServiceWithOcrEnabledAnd202IsReturnedJpg() throws ImagePayloadException, IOException, CryptoException, ImageCompressException, InterruptedException {
         when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(true);
         ImagePayload imagePayload = imageStorage.getPayload(SESSION);
         imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
@@ -198,11 +207,10 @@ public class FitnoteSubmitResourceTest {
         examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
         verify(imageCompressor, times(2)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
-        assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
 
     @Test
-    public void jsonIsPassedIntoServiceWithOcrEnabledAnd202IsReturned_PDF() throws ImagePayloadException, IOException, CryptoException, InterruptedException, ImageCompressException {
+    public void jsonIsPassedIntoServiceWithOcrEnabledAnd202IsReturnedPdf() throws ImagePayloadException, IOException, CryptoException, ImageCompressException, InterruptedException {
         when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(true);
         when(controllerConfiguration.getPdfScanDPI()).thenReturn(300);
 
@@ -218,34 +226,10 @@ public class FitnoteSubmitResourceTest {
         examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
         verify(imageCompressor, times(2)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
-        assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
 
     @Test
-    public void testThatTimeoutOnQueryCausesAnEror() throws ImagePayloadException, IOException, CryptoException, InterruptedException {
-        when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(true);
-        ImagePayload imagePayload = imageStorage.getPayload(SESSION);
-        imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
-        createAndValidateImage(VALID_JSON, true, imagePayload);
-
-        when(ocrChecker.imageContainsReadableText(any(ImagePayload.class))).thenReturn(ExpectedFitnoteFormat.Status.SUCCESS);
-        Response response = resourceUnderTest.submitFitnote(VALID_JSON);
-        verify(validator).validateAndTranslateSubmission(VALID_JSON);
-        assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
-
-        try {
-            examineImagestatusResponseForValueOrTimeout("NEVER_GONNA_MATCH");
-            fail("should always timeout");
-
-        } catch (AssertionError e) {
-            assertThat(e.getMessage(), containsString("RunnableAssert(checking /imagestatus for current session) did not succeed within 60 seconds"));
-        }
-
-        assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
-    }
-
-    @Test
-    public void jsonIsPassedIntoServiceWithOcrDisabledAnd202IsReturned() throws ImagePayloadException, IOException, CryptoException, InterruptedException, ImageCompressException {
+    public void jsonIsPassedIntoServiceWithOcrDisabledAnd202IsReturned() throws ImagePayloadException, IOException, CryptoException, ImageCompressException, InterruptedException {
         when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(false);
         ImagePayload imagePayload = imageStorage.getPayload(SESSION);
         imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
@@ -257,7 +241,6 @@ public class FitnoteSubmitResourceTest {
         examineImagestatusResponseForValueOrTimeout("SUCCEEDED");
 
         verify(imageCompressor, times(1)).compressBufferedImage(any(BufferedImage.class), anyInt(), anyBoolean());
-        assertThat("should be final compressed image size", getPayloadImageSize(), is(equalTo(controllerConfiguration.getTargetImageSizeKB() * 1000)));
     }
 
     @Test
@@ -284,7 +267,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void confirmWhenImagePassesOCRCheck200AndSessionIdIsReturned() throws ImagePayloadException, IOException, CryptoException {
+    public void confirmWhenImagePassesOCRCheck200AndSessionIdIsReturned() throws ImagePayloadException, IOException {
         ImagePayload imagePayload = new ImagePayload();
         String base64Image = "Base64Image";
         imagePayload.setImage(base64Image);
@@ -298,13 +281,11 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void confirmWhenImagePassesOCRCheckButFailsCompression200IsReturned() throws ImagePayloadException, IOException, CryptoException, ImageCompressException, InterruptedException {
+    public void confirmWhenImagePassesOCRCheckButFailsCompression200IsReturned() throws ImagePayloadException, IOException, ImageCompressException, InterruptedException {
         when(imageCompressor.compressBufferedImage(any(BufferedImage.class), any(int.class), eq(true))).thenReturn(null);
         ImagePayload imagePayload = new ImagePayload();
-        String base64Image = "Base64Image";
-        imagePayload.setImage(base64Image);
-        String sessionId = SESSION;
-        imagePayload.setSessionId(sessionId);
+        imagePayload.setImage(Base64.encodeBytes(COMPRESSED_PAGE_LARGE));
+        imagePayload.setSessionId(SESSION);
         createAndValidateImage(VALID_JSON, true, imagePayload);
         Response response = resourceUnderTest.submitFitnote(VALID_JSON);
         assertThat(response.getStatus(), is(SC_ACCEPTED));
@@ -313,7 +294,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void confirmWhenImageFailsOCRCheck400IsReturned() throws ImagePayloadException, IOException, CryptoException, InterruptedException, ImageCompressException {
+    public void confirmWhenImageFailsOCRCheck400IsReturned() throws ImagePayloadException, IOException, CryptoException, ImageCompressException, InterruptedException {
         when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(true);
         ImagePayload imagePayload = imageStorage.getPayload(SESSION);
         imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
@@ -340,10 +321,10 @@ public class FitnoteSubmitResourceTest {
 
     @Test
     public void failedImagePersistCausesInternalServiceException() throws IOException, CryptoException, ImagePayloadException, InterruptedException {
-        String expectedImage = "image";
         ImagePayload imagePayload = imageStorage.getPayload(SESSION);
-        imagePayload.setImage(expectedImage);
+        imagePayload.setImage(Base64.encodeBytes(COMPRESSED_PAGE_LARGE));
 
+        when(ocrChecker.imageContainsReadableText(any(ImagePayload.class))).thenThrow(new IOException("hello"));
         when(validator.validateAndTranslateSubmission(VALID_JSON)).thenReturn(imagePayload);
         when(controllerConfiguration.isOcrChecksEnabled()).thenReturn(true);
 
@@ -354,7 +335,7 @@ public class FitnoteSubmitResourceTest {
     }
 
     @Test
-    public void qrSubmissionReceivesValidJsonAnd202IsReturned() throws ImagePayloadException, IOException, CryptoException {
+    public void qrSubmissionReceivesValidJsonAnd202IsReturned() throws ImagePayloadException {
         ImagePayload payload = new ImagePayload();
         payload.setBarcodeImage(FITNOTE_QR_TEST);
         payload.setSessionId(SESSION);
@@ -374,8 +355,9 @@ public class FitnoteSubmitResourceTest {
         verifyNoMoreInteractions(ocrChecker);
     }
 
-    private void examineImagestatusResponseForValueOrTimeout(String expectedStatus) {
-        PollingWait wait = new PollingWait().timeoutAfter(60, SECONDS).pollEvery(1, SECONDS);
+    private void examineImagestatusResponseForValueOrTimeout(String expectedStatus) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(1); // pause before first execution to allow for async processes to begin/end
+        PollingWait wait = new PollingWait().timeoutAfter(59, SECONDS).pollEvery(1, SECONDS);
 
         wait.until(new RunnableAssert("checking /imagestatus for current session") {
             @Override
@@ -386,16 +368,12 @@ public class FitnoteSubmitResourceTest {
         });
     }
 
-    private void createAndValidateImage(String json, boolean isValid, ImagePayload imagePayload) throws ImagePayloadException, IOException, CryptoException {
+    private void createAndValidateImage(String json, boolean isValid, ImagePayload imagePayload) throws ImagePayloadException, IOException {
         when(validator.validateAndTranslateSubmission(json)).thenReturn(imagePayload);
         when(ocrChecker.imageContainsReadableText(imagePayload)).thenReturn(isValid ? ExpectedFitnoteFormat.Status.SUCCESS : ExpectedFitnoteFormat.Status.FAILED);
     }
 
     private StatusItem decodeResponse(String response) throws IOException {
         return new ObjectMapper().readValue(response, StatusItem.class);
-    }
-
-    private int getPayloadImageSize() throws ImagePayloadException, IOException, CryptoException {
-        return Base64.decode(imageStorage.getPayload(SESSION).getImage()).length;
     }
 }

@@ -13,21 +13,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FitnoteAddressResourceTest {
-    private final static String VALID_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
-    private final static String INVALID_ADDRESS = "{}";
-    private final static String SESSION_ID = "123456";
+    private static final String VALID_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
+    private static final String INVALID_ADDRESS = "{}";
+    private static final String SESSION_ID = "123456";
 
     @Mock
     private JsonValidator jsonValidator;
@@ -42,8 +42,6 @@ public class FitnoteAddressResourceTest {
 
     @Before
     public void setup() throws ImagePayloadException, IOException, CryptoException {
-        when(config.getSessionExpiryTimeInSeconds()).thenReturn(new Long(1000));
-
         ImagePayload item = new ImagePayload();
         item.setSessionId(SESSION_ID);
 
@@ -80,7 +78,7 @@ public class FitnoteAddressResourceTest {
         when(jsonValidator.validateAndTranslateAddress(VALID_ADDRESS)).thenReturn(mockNewAddress);
         resourceUnderTest.updateAddress(VALID_ADDRESS);
 
-        Address newAddress = imageStorage.getPayload("123456").getClaimantAddress();
+        Address newAddress = imageStorage.getPayload(SESSION_ID).getClaimantAddress();
         assertThat(newAddress.getHouseNameOrNumber(), is("254"));
         assertThat(newAddress.getStreet(), is("Bakers Street"));
         assertThat(newAddress.getCity(), is("London"));

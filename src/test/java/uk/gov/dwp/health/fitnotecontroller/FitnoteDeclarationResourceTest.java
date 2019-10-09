@@ -1,9 +1,8 @@
 package uk.gov.dwp.health.fitnotecontroller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rabbitmq.client.AMQP;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
-import uk.gov.dwp.health.crypto.rabbitmq.exceptions.EventsMessageException;
+import uk.gov.dwp.health.crypto.exceptions.EventsMessageException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.Address;
 import uk.gov.dwp.health.fitnotecontroller.domain.Declaration;
@@ -15,28 +14,19 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
-import uk.gov.dwp.components.drs.DrsCommunicatorException;
-import uk.gov.dwp.health.rabbitmq.PublishSubscribe;
-import uk.gov.dwp.health.rabbitmq.items.event.EventMessage;
-import uk.gov.dwp.tls.TLSGeneralException;
+import org.mockito.junit.MockitoJUnitRunner;
+import uk.gov.dwp.health.messageq.amazon.sns.MessagePublisher;
+import uk.gov.dwp.health.messageq.items.event.EventMessage;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.util.concurrent.TimeoutException;
+import java.lang.reflect.InvocationTargetException;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,6 +34,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
+@SuppressWarnings({"squid:S1192", "squid:S1075"}) // allow string literals and hard-coded URI
 public class FitnoteDeclarationResourceTest {
 
     private FitnoteDeclarationResource resource;
@@ -52,29 +43,33 @@ public class FitnoteDeclarationResourceTest {
     private static final String INVALID_DECLARATION = "{ \"sessionId\" : \"123456\"  }";
     private static final String EMPTY_DECLARATION = "{ \"sessionId\" :  , \"accepted\" : }";
     private static final String VALID_NEW_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
-    private static final String EXCHANGE_NAME = "test.exchange";
+    private static final String SUBJECT_NAME = "fitnote-subject";
+    private static final String TOPIC_NAME = "test-topic";
     private static final String ROUTING_KEY = "route.one";
 
     @Mock
     private ImageStorage imageStore;
+
     @Mock
     private JsonValidator jsonValidator;
+
     @Mock
-    private PublishSubscribe publishSubscribe;
+    private MessagePublisher snsPublisher;
+
     @Mock
     private FitnoteControllerConfiguration config;
 
     @Before
-    public void setup() throws URISyntaxException {
-        resource = new FitnoteDeclarationResource(imageStore, jsonValidator, publishSubscribe, config);
+    public void setup() {
+        resource = new FitnoteDeclarationResource(imageStore, jsonValidator, snsPublisher, config);
 
-        when(config.getRabbitMqURI()).thenReturn(new URI("amqp://system:manager@localhost:15671"));
-        when(config.getRabbitExchangeName()).thenReturn(EXCHANGE_NAME);
-        when(config.getRabbitEventRoutingKey()).thenReturn(ROUTING_KEY);
+        when(config.getSnsRoutingKey()).thenReturn(ROUTING_KEY);
+        when(config.getSnsTopicName()).thenReturn(TOPIC_NAME);
+        when(config.getSnsSubject()).thenReturn(SUBJECT_NAME);
     }
 
     @Test
-    public void returns200WithValidAcceptedDeclaration_PLAIN() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAcceptedDeclarationPlainContent() throws DeclarationException, IOException, ImagePayloadException, CryptoException, NoSuchMethodException, IllegalAccessException, InstantiationException, EventsMessageException, InvocationTargetException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
 
@@ -87,11 +82,11 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(200));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verify(publishSubscribe, times(1)).publishMessageToExchange(eq(false), eq(EXCHANGE_NAME), eq(ROUTING_KEY), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        verify(snsPublisher, times(1)).publishMessageToSnsTopic(eq(false), eq(TOPIC_NAME), eq(SUBJECT_NAME), any(EventMessage.class), eq(null));
     }
 
     @Test
-    public void returns200WithValidAcceptedDeclaration_ENCRYPTED() throws DeclarationException, IOException, ImagePayloadException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAcceptedDeclarationEncryptedContent() throws DeclarationException, IOException, ImagePayloadException, CryptoException, NoSuchMethodException, IllegalAccessException, InstantiationException, EventsMessageException, InvocationTargetException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
 
@@ -99,17 +94,17 @@ public class FitnoteDeclarationResourceTest {
 
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
         when(imageStore.getPayload("123456")).thenReturn(payload);
-        when(config.isRabbitEncryptMessages()).thenReturn(true);
+        when(config.isSnsEncryptMessages()).thenReturn(true);
 
         Response response = resource.submitDeclaration(ACCEPTED_DECLARATION);
         assertThat(response.getStatus(), is(200));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verify(publishSubscribe, times(1)).publishMessageToExchange(eq(true), eq(EXCHANGE_NAME), eq(ROUTING_KEY), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        verify(snsPublisher, times(1)).publishMessageToSnsTopic(eq(true), eq(TOPIC_NAME), eq(SUBJECT_NAME), any(EventMessage.class), eq(null));
     }
 
     @Test
-    public void return400WithMissingImagePayload() throws IOException, DeclarationException, ImagePayloadException, CryptoException, CryptoException {
+    public void return400WithMissingImagePayload() throws IOException, DeclarationException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(null, "123456", "NINO", "123456", false);
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
@@ -122,7 +117,7 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
@@ -139,7 +134,7 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
@@ -155,43 +150,40 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
-    public void returns400WithInvalidDeclaration() throws DeclarationException, IOException {
+    public void returns400WithInvalidDeclaration() throws DeclarationException {
         when(jsonValidator.validateAndTranslateDeclaration(INVALID_DECLARATION)).thenThrow(new DeclarationException("test exception"));
 
         Response response = resource.submitDeclaration(INVALID_DECLARATION);
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(INVALID_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
-    public void returns400WithEmptyDeclaration() throws DeclarationException, IOException {
+    public void returns400WithEmptyDeclaration() throws DeclarationException {
         when(jsonValidator.validateAndTranslateDeclaration(EMPTY_DECLARATION)).thenThrow(new DeclarationException("test exception"));
 
         Response response = resource.submitDeclaration(EMPTY_DECLARATION);
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(EMPTY_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
-    public void returns400WithADeclinedDeclaration() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, CryptoException {
-        ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
-
+    public void returns400WithADeclinedDeclaration() throws DeclarationException {
         when(jsonValidator.validateAndTranslateDeclaration(DECLINED_DECLARATION)).thenThrow(new DeclarationException("Invalid value"));
-        when(imageStore.getPayload("123456")).thenReturn(payload);
 
         Response response = resource.submitDeclaration(DECLINED_DECLARATION);
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(DECLINED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
@@ -203,11 +195,11 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq("{\"test\":\"string\"}"));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
-    public void returns500WhenARabbitExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, CryptoException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException, EventsMessageException, CryptoException {
+    public void returns500WhenASnsExceptionIsThrown() throws IOException, DeclarationException, ImagePayloadException, NoSuchMethodException, InvocationTargetException, EventsMessageException, InstantiationException, IllegalAccessException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 
@@ -216,13 +208,13 @@ public class FitnoteDeclarationResourceTest {
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
         when(imageStore.getPayload("123456")).thenReturn(payload);
 
-        doThrow(new EventsMessageException("i am an exception!")).when(publishSubscribe).publishMessageToExchange(eq(false), eq("test.exchange"), eq("route.one"), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        doThrow(new EventsMessageException("i am an exception!")).when(snsPublisher).publishMessageToSnsTopic(eq(false), eq(TOPIC_NAME), eq(SUBJECT_NAME), any(EventMessage.class), eq(null));
 
         Response response = resource.submitDeclaration(ACCEPTED_DECLARATION);
         assertThat(response.getStatus(), is(500));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verify(publishSubscribe, times(1)).publishMessageToExchange(eq(false), eq(EXCHANGE_NAME), eq(ROUTING_KEY), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        verify(snsPublisher, times(1)).publishMessageToSnsTopic(eq(false), eq(TOPIC_NAME), eq(SUBJECT_NAME), any(EventMessage.class), eq(null));
     }
 
     @Test
@@ -238,7 +230,7 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
@@ -258,11 +250,11 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(400));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verifyZeroInteractions(publishSubscribe);
+        verifyZeroInteractions(snsPublisher);
     }
 
     @Test
-    public void returns200WithValidAddress() throws DeclarationException, IOException, DrsCommunicatorException, ImagePayloadException, CryptoException, UnrecoverableKeyException, NoSuchAlgorithmException, URISyntaxException, TimeoutException, EventsMessageException, CryptoException, TLSGeneralException, KeyStoreException, CertificateException, KeyManagementException {
+    public void returns200WithValidAddress() throws DeclarationException, IOException, NoSuchMethodException, InvocationTargetException, EventsMessageException, InstantiationException, IllegalAccessException, CryptoException, ImagePayloadException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         ImagePayload payload = buildImagePayload(" ", "123456", "NINO", "123456", true);
 
@@ -276,7 +268,7 @@ public class FitnoteDeclarationResourceTest {
         assertThat(response.getStatus(), is(200));
 
         verify(jsonValidator, times(1)).validateAndTranslateDeclaration(eq(ACCEPTED_DECLARATION));
-        verify(publishSubscribe, times(1)).publishMessageToExchange(eq(false), eq(EXCHANGE_NAME), eq(ROUTING_KEY), any(EventMessage.class), any(AMQP.BasicProperties.class));
+        verify(snsPublisher, times(1)).publishMessageToSnsTopic(eq(false), eq(TOPIC_NAME), eq(SUBJECT_NAME), any(EventMessage.class), eq(null));
     }
 
     /*

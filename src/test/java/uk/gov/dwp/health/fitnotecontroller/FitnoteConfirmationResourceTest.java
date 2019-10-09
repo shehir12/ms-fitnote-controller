@@ -1,8 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller;
 
 import uk.gov.dwp.health.crypto.exception.CryptoException;
-import uk.gov.dwp.health.fitnotecontroller.FitnoteConfirmationResource;
-import uk.gov.dwp.health.fitnotecontroller.ImageStorage;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import uk.gov.dwp.health.fitnotecontroller.utils.JsonValidator;
@@ -12,7 +10,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -93,7 +91,7 @@ public class FitnoteConfirmationResourceTest {
     }
 
     @Test
-    public void invalidJsonOnConfirmationReturns400() throws IOException, ImagePayloadException {
+    public void invalidJsonOnConfirmationReturns400() throws ImagePayloadException {
         String json = "{\"nino\":\"AA370773A\"," +
                 "\"mobileNumber\":\"0113999999\"}";
         when(jsonValidator.validateAndTranslateConfirmation(json)).thenThrow(new ImagePayloadException("thrown for test purposes"));

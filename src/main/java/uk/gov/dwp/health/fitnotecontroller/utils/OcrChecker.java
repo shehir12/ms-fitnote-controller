@@ -171,14 +171,14 @@ public class OcrChecker {
         int height = fitnoteFormat.getFinalImage().getHeight();
         int width = fitnoteFormat.getFinalImage().getWidth();
 
-        ocrScanTopLeft(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation);
+        ocrScanTopLeft(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation, configuration.getOcrVerticalSlice());
 
         if (fitnoteFormat.getTopLeftPercentage() < configuration.getDiagonalTarget()) {
             LOG.info("TL {} < {}, impossible diagonal match, move to BL", fitnoteFormat.getTopLeftPercentage(), configuration.getDiagonalTarget());
 
         } else {
 
-            ocrScanBaseRight(ocr, fitnoteFormat, width, height, fitnoteFormat.getTopLeftPercentage() >= configuration.getHighTarget() ? configuration.getDiagonalTarget() : configuration.getHighTarget(), rotation);
+            ocrScanBaseRight(ocr, fitnoteFormat, width, height, fitnoteFormat.getTopLeftPercentage() >= configuration.getHighTarget() ? configuration.getDiagonalTarget() : configuration.getHighTarget(), rotation, configuration.getOcrVerticalSlice());
 
             if (fitnoteFormat.validateFitnotePassed().equals(ExpectedFitnoteFormat.Status.SUCCESS)) {
                 LOG.info("no need to continue scanning, matched on TL/BR");
@@ -186,7 +186,7 @@ public class OcrChecker {
             }
         }
 
-        ocrScanBaseLeft(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation);
+        ocrScanBaseLeft(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation, configuration.getOcrVerticalSlice());
 
         if (fitnoteFormat.validateFitnotePassed().equals(ExpectedFitnoteFormat.Status.SUCCESS)) {
             LOG.info("no need to continue scanning, matched on LHS");
@@ -197,32 +197,30 @@ public class OcrChecker {
             return;
         }
 
-        ocrScanTopRight(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation);
+        ocrScanTopRight(ocr, fitnoteFormat, width, height, configuration.getHighTarget(), rotation, configuration.getOcrVerticalSlice());
     }
 
-    private void ocrScanTopLeft(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation) throws IOException {
-        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(0, 0, width / 2, height / 6);
+    private void ocrScanTopLeft(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation, int verticalSlice) throws IOException {
+        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(0, 0, width / 2, height / verticalSlice);
         ocrApplyImageFilters(subImage, ocr, fitnoteFormat, "TL", targetPercentage, rotation);
     }
 
-    private void ocrScanTopRight(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation) throws IOException {
-        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(width / 2, 0, width / 2, height / 6);
+    private void ocrScanTopRight(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation, int verticalSlice) throws IOException {
+        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(width / 2, 0, width / 2, height / verticalSlice);
         ocrApplyImageFilters(subImage, ocr, fitnoteFormat, "TR", targetPercentage, rotation);
     }
 
-    private void ocrScanBaseLeft(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation) throws IOException {
-        int baseDifferential = 6;
-        int heightDifferential = height / baseDifferential;
+    private void ocrScanBaseLeft(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation, int verticalSlice) throws IOException {
+        int heightDifferential = height / verticalSlice;
 
-        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(0, heightDifferential * (baseDifferential - 1), width / 2, heightDifferential);
+        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(0, heightDifferential * (verticalSlice - 1), width / 2, heightDifferential);
         ocrApplyImageFilters(subImage, ocr, fitnoteFormat, "BL", targetPercentage, rotation);
     }
 
-    private void ocrScanBaseRight(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation) throws IOException {
-        int baseDifferential = 6;
-        int heightDifferential = height / baseDifferential;
+    private void ocrScanBaseRight(tesseract.TessBaseAPI ocr, ExpectedFitnoteFormat fitnoteFormat, int width, int height, int targetPercentage, int rotation, int verticalSlice) throws IOException {
+        int heightDifferential = height / verticalSlice;
 
-        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(width / 2, heightDifferential * (baseDifferential - 1), width / 2, heightDifferential);
+        BufferedImage subImage = fitnoteFormat.getFinalImage().getSubimage(width / 2, heightDifferential * (verticalSlice - 1), width / 2, heightDifferential);
         ocrApplyImageFilters(subImage, ocr, fitnoteFormat, "BR", targetPercentage, rotation);
     }
 

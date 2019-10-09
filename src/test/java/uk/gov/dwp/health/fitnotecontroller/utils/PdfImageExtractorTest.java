@@ -1,7 +1,6 @@
 package uk.gov.dwp.health.fitnotecontroller.utils;
 
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
-import uk.gov.dwp.health.fitnotecontroller.utils.PdfImageExtractor;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import java.io.File;
@@ -12,8 +11,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 
+@SuppressWarnings("squid:S1192") // allow string literals
 public class PdfImageExtractorTest {
 
     @Test

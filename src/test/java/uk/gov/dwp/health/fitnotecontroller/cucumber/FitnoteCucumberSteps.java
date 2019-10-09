@@ -1,9 +1,10 @@
 package uk.gov.dwp.health.fitnotecontroller.cucumber;
 
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.sqs.model.Message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.rabbitmq.client.GetResponse;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
 import cucumber.api.java.en.And;
@@ -19,28 +20,24 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.junit.Assert;
 import org.slf4j.Logger;
-import org.apache.qpid.server.Broker;
 import org.junit.Rule;
 import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.crypto.CryptoConfig;
 import uk.gov.dwp.health.crypto.CryptoDataManager;
 import uk.gov.dwp.health.crypto.CryptoMessage;
-import uk.gov.dwp.health.rabbitmq.EventConstants;
-import uk.gov.dwp.tls.TLSGeneralException;
+import uk.gov.dwp.health.crypto.exception.CryptoException;
+import uk.gov.dwp.health.messageq.EventConstants;
+import uk.gov.dwp.health.messageq.amazon.items.AmazonConfigBase;
+import uk.gov.dwp.health.messageq.amazon.items.messages.SnsMessageClassItem;
+import uk.gov.dwp.health.messageq.amazon.utils.AmazonQueueUtilities;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,15 +49,13 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class FitnoteCucumberSteps {
     private static final Logger LOG = LoggerFactory.getLogger(FitnoteCucumberSteps.class.getName());
     private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 120000;
-    private static Broker rabbitMqBroker = new Broker();
-    private static URI rabbitMqUri;
 
     private static final String SPOOF_AWS_RESPONSE =
             "{\n" +
@@ -69,33 +64,21 @@ public class FitnoteCucumberSteps {
                     "  \"Plaintext\": \"VdzKNHGzUAzJeRBVY+uUmofUGGiDzyB3+i9fVkh3piw=\"\n" +
                     "}";
 
-    private RabbitMqUtilities rabbitMqUtilities = new RabbitMqUtilities();
     private ObjectMapper mapper = new ObjectMapper();
+    private AmazonQueueUtilities queueUtilities;
     private CryptoDataManager awsKmsCryptoClass;
+    private List<Message> queueMessages;
     private Pattern regexFileExtension;
-    private GetResponse queueMessage;
     private HttpClient httpClient;
     private HttpResponse response;
     private String jsonResponse;
-
-    static {
-        try {
-            rabbitMqUri = new URI("amqp://system:manager@localhost:9105");
-            rabbitMqBroker.startup(RabbitMqUtilities.setupBrokerTestService(rabbitMqUri.getPort()));
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> rabbitMqBroker.shutdown()));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     @Rule
     public WireMockRule awsKmsServiceMock = new WireMockRule(wireMockConfig().port(5678));
 
     @Before
-    public void startServiceMocks() throws Exception {
+    public void startServiceMocks() throws CryptoException {
         regexFileExtension = Pattern.compile("\\.(\\w+)");
-        queueMessage = null;
 
         awsKmsServiceMock.stubFor(post(urlEqualTo("/"))
                 .willReturn(aResponse()
@@ -107,6 +90,24 @@ public class FitnoteCucumberSteps {
         // create local properties to negate KMS from needing to access Metadata Service for IAM role privs
         System.setProperty("aws.accessKeyId", "this_is_my_system_property_key");
         System.setProperty("aws.secretKey", "abcd123456789");
+
+        AmazonConfigBase snsConfig = new AmazonConfigBase();
+        snsConfig.setEndpointOverride("http://localhost:4575");
+        snsConfig.setS3EndpointOverride("http://localhost:4572");
+        snsConfig.setLargePayloadSupportEnabled(false);
+        snsConfig.setPathStyleAccessEnabled(true);
+        snsConfig.setS3BucketName("sns-bucket");
+        snsConfig.setRegion(Regions.US_EAST_1);
+
+        AmazonConfigBase sqsConfig = new AmazonConfigBase();
+        sqsConfig.setEndpointOverride("http://localhost:4576");
+        sqsConfig.setS3EndpointOverride("http://localhost:4572");
+        sqsConfig.setLargePayloadSupportEnabled(false);
+        sqsConfig.setPathStyleAccessEnabled(true);
+        sqsConfig.setS3BucketName("sqs-bucket");
+        sqsConfig.setRegion(Regions.US_EAST_1);
+
+        queueUtilities = new AmazonQueueUtilities(sqsConfig, snsConfig);
 
         CryptoConfig cryptoConfig = new CryptoConfig("test_request_id");
         cryptoConfig.setKmsEndpointOverride("http://localhost:5678");
@@ -121,7 +122,7 @@ public class FitnoteCucumberSteps {
     }
 
     @Given("^the http client is up$")
-    public void theControllerIsUp() throws Throwable {
+    public void theControllerIsUp() {
         httpClient = HttpClientBuilder.create().build();
     }
 
@@ -149,7 +150,7 @@ public class FitnoteCucumberSteps {
     }
 
     @And("^I hit the service url \"([^\"]*)\" with a POST and session id \"([^\"]*)\" getting return status (\\d+) the following json body$")
-    public void iHitTheServiceUrlWithAPOSTAndSessionIdGettingReturnStatusTheFollowingJsonBody(String url, String sessionId, int statusCode, Map<String, String> expectedValues) throws Throwable {
+    public void iHitTheServiceUrlWithAPOSTAndSessionIdGettingReturnStatusTheFollowingJsonBody(String url, String sessionId, int statusCode, Map<String, String> expectedValues) throws IOException {
         performHttpPostWithUriOf(url, String.format("{\"sessionId\":\"%s\"}", sessionId));
         checkHTTPResponseStatusCode(statusCode);
 
@@ -157,7 +158,7 @@ public class FitnoteCucumberSteps {
     }
 
     @And("^I hit the service url \"([^\"]*)\" with session id \"([^\"]*)\" getting return status (\\d+) and finally timing out trying to match the following body$")
-    public void iHitTheServiceUrlWithSessionIdGettingReturnStatusAndFinallyContainingTheFollowingJsonBody_EXCEPTION(String url, String sessionId, int status, Map<String, String> expectedValues) throws InterruptedException {
+    public void iHitTheServiceUrlWithSessionIdGettingReturnStatusAndFinallyContainingTheFollowingJsonBodyException(String url, String sessionId, int status, Map<String, String> expectedValues) throws InterruptedException {
         try {
             iHitTheServiceUrlWithSessionIdGettingReturnStatusAndFinallyContainingTheFollowingJsonBody(url, sessionId, status, expectedValues);
 
@@ -173,39 +174,50 @@ public class FitnoteCucumberSteps {
         assertThat(actualStatusCode, is(expectedStatusCode));
     }
 
-    @And("^I create a rabbit exchange named \"([^\"]*)\"$")
-    public void iCreateARabbitExchangeNamed(String exchangeName) throws Throwable {
-        rabbitMqUtilities.initStandardExchange(rabbitMqUri, exchangeName);
+    @And("^I create a sns topic named \"([^\"]*)\"$")
+    public void iCreateAnSnsExchangeNamed(String topicName) {
+        queueUtilities.createTopic(topicName);
     }
 
-    @And("^I create a (DURABLE|NON-DURABLE)? catch all subscription for queue name \"([^\"]*)\" binding to exchange \"([^\"]*)\"$")
-    public void iCreateACatchAllSubscriptionForQueueNameBindingToExchange(String isDurable, String queueName, String exchangeName) throws IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, TimeoutException, TLSGeneralException, KeyStoreException, URISyntaxException, KeyManagementException {
-        rabbitMqUtilities.initCatchAllTestQueue(rabbitMqUri, queueName, exchangeName, ((isDurable != null) && (isDurable.equalsIgnoreCase("DURABLE"))));
+    @And("^I create a catch all subscription for queue name \"([^\"]*)\" binding to topic \"([^\"]*)\" with msg visibility timeout of (\\d+) seconds$")
+    public void iCreateACatchAllSubscriptionForQueueNameBindingToExchange(String queueName, String topicName, int timeout) {
+        queueUtilities.createQueue(queueName, timeout);
+        queueUtilities.subscribeQueueToTopic(queueName, topicName);
     }
 
-    @And("^a message is successfully consumed from the queue and there are (\\d+) pending message left on queue \"([^\"]*)\"$")
-    public void thereIsPendingMessageOnQueue(int pendingMessages, String queueName) throws Throwable {
-        queueMessage = rabbitMqUtilities.getQueueContents(rabbitMqUri, queueName, true);
-        assertNotNull(queueMessage);
+    @And("^I wait (\\d+) seconds for the visibility timeout to expire$")
+    public void iWaitSecondsForVisibiliyTimout(long timeout) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(timeout);
+    }
 
-        assertThat("mismatched pending messages", queueMessage.getMessageCount(), is(equalTo(pendingMessages)));
+    @And("^a message is successfully removed from the queue, there were a total of (\\d+) messages on queue \"([^\"]*)\"$")
+    public void thereIsPendingMessageOnQueue(int totalMessages, String queueName) throws IOException {
+        queueMessages = queueUtilities.receiveMessages(queueName, queueUtilities.getS3Sqs());
+
+        Assert.assertThat("mismatched messages", queueMessages.size(), is(equalTo(totalMessages)));
+
+        assertNotNull("queue contents are null", queueMessages);
+        queueUtilities.deleteMessageFromQueue(queueName, queueMessages.get(0).getReceiptHandle());
     }
 
     @And("^there are no pending messages on queue \"([^\"]*)\"$")
-    public void thereAreNoPendingMessageOnQueue(String queueName) throws Throwable {
-        queueMessage = rabbitMqUtilities.getQueueContents(rabbitMqUri, queueName, true);
-        assertNull(queueMessage);
+    public void thereAreNoPendingMessageOnQueue(String queueName) throws IOException {
+        queueMessages = queueUtilities.receiveMessages(queueName, queueUtilities.getS3Sqs());
+        assertNotNull(queueMessages);
+        assertTrue(queueMessages.isEmpty());
     }
 
-    @And("^the message has a correlation id and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId$")
-    public void theMessageIsTakenFromTheQueueHasACorrelationIdAndAValidImagePayloadWithTheFollowingNINOHouseNumberAndPostcode(Map<String, String> jsonValues) throws Throwable {
-        assertNotNull(queueMessage);
+    @And("^the message has a correlation id, delivery mode (PERSISTENT|NON-PERSISTENT)? and a valid ImagePayload with the following NINO, House number, Postcode and matching SessionId$")
+    public void theMessageIsTakenFromTheQueueHasACorrelationIdAndAValidImagePayloadWithTheFollowingNINOHouseNumberAndPostcode(String msgPersistence, Map<String, String> jsonValues) throws IOException, CryptoException {
+        assertNotNull(queueMessages);
+        assertFalse(queueMessages.isEmpty());
 
-        String msgContents = new String(queueMessage.getBody());
+        SnsMessageClassItem snsMessageClass = new SnsMessageClassItem().buildMessageClassItem(queueMessages.get(0).getBody());
+        String msgContents = snsMessageClass.getMessage();
 
-        if (queueMessage.getProps().getHeaders().containsKey(EventConstants.KMS_DATA_KEY_MARKER)) {
+        if (snsMessageClass.getMessageAttributes().get(EventConstants.KMS_DATA_KEY_MARKER) != null) {
             CryptoMessage cryptoMessage = new CryptoMessage();
-            cryptoMessage.setKey(queueMessage.getProps().getHeaders().get(EventConstants.KMS_DATA_KEY_MARKER).toString());
+            cryptoMessage.setKey(snsMessageClass.getMessageAttributes().get(EventConstants.KMS_DATA_KEY_MARKER).getStringValue());
             cryptoMessage.setMessage(msgContents);
 
             msgContents = awsKmsCryptoClass.decrypt(cryptoMessage);
@@ -226,6 +238,9 @@ public class FitnoteCucumberSteps {
                     break;
                 case "sessionId":
                     assertThat("Wrong sessionId", payload.path("sessionId").toString(), is(equalTo(field.getValue())));
+                    break;
+                default:
+                    throw new IOException(String.format("unknown field '%s'", field.getKey()));
             }
         }
     }

@@ -128,7 +128,7 @@ Returns:-
         "accepted":true
     }
 
-* _true_ : declare ok, package, send to RabbitMQ and clear session
+* _true_ : declare ok, package, send to SNS and clear session
 * _false_ : declare not ok, log, clear the session and return
 
 Returns:-
@@ -238,15 +238,11 @@ Return code :-
 * `redisStoreURI`: the URI of the Redis instance (eg. redis://localhost:6379)
 * `redisEncryptMessages`: whether to encrypt the ImagePayload before persisting to Redis
 * `redisKmsCryptoConfiguration`: The `CryptoConfig` object for KMS interaction for redis activities (when `redisEncryptMessages is true)
-* `rabbitMqURI` : The URI of the RabbitMq instance (eg. amqp://guest:guest@localhost:9105)
-* `rabbitEventRoutingKey` : the routing key to use for RabbitMq published messages
-* `rabbitExchangeName` : the RabbitMq exchange name
-* `rabbitEncryptMessages`: whether to encrypt the RabbitMq messages
-* `rabbitKmsCryptoConfiguration`: The `CryptoConfig` object for KMS interaction for rabbit activities
-* `rabbitMqTruststoreFile` : The RabbitMq truststore for SSL connections
-* `rabbitMqKeystoreFile` : The certificate keystore for SSL RabbitMq connections
-* `rabbitMqTruststorePass` : the truststore password
-* `rabbitMqKeystorePass` : the keystore password
+* `snsRoutingKey` : the routing key (added to the headers) for SNS published messages
+* `snsTopicName` : the SNS topic exchange name
+* `snsSubject` : The subject of the SNS notification message
+* `snsEncryptMessages`: whether to encrypt the SNS messages
+* `snsKmsCryptoConfiguration`: The `CryptoConfig` object for KMS interaction for SNS activities
 * `ocrChecksEnabled` : is OCR enabled, defaults to **true**
 * `forceLandscapeImageSubmission` : force the submissions of landscape images, defaults to **true**
 * `tesseractFolderPath` : the tesseract configuration file path
