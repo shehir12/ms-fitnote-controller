@@ -19,10 +19,14 @@ public class PdfImageExtractorTest {
     public void nullByteArrayFails() {
         try {
             PdfImageExtractor.extractImage(null, 300);
-
-        } catch (ImagePayloadException e) {
+        } catch (ImagePayloadException e ) {
             assertThat("cannot accept null", e.getMessage(), is(equalTo("incoming byte array cannot be null")));
-        }
+        } catch (Exception ignored){}
+    }
+
+    @Test
+    public void negativeDPIScanUnsuccessful() throws IOException, ImagePayloadException {
+        assertNull("cannot have a negative dpi", PdfImageExtractor.extractImage(FileUtils.readFileToByteArray(new File("src/test/resources/FullPage_Portrait.pdf")), -1));
     }
 
     @Test

@@ -13,57 +13,52 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 public class PdfImageExtractor {
-    private static final Logger LOG = LoggerFactory.getLogger(PdfImageExtractor.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PdfImageExtractor.class.getName());
 
-    private PdfImageExtractor() {
+  private PdfImageExtractor() {
+  }
+
+  public static byte[] extractImage(byte[] incomingObject, int scanDPI)
+          throws ImagePayloadException, IOException {
+    byte[] extractedImage = null;
+    PDDocument document = null;
+
+    if (incomingObject == null) {
+      throw new ImagePayloadException("incoming byte array cannot be null");
+    }
+    if (scanDPI <= 0) {
+      LOG.debug("scanDPI must be a positive integer, {} is not valid", scanDPI);
+      return extractedImage;
     }
 
-    public static byte[] extractImage(byte[] incomingObject, int scanDPI) throws ImagePayloadException {
-        byte[] extractedImage = null;
-        PDDocument document = null;
+    try {
 
-        if (incomingObject == null) {
-            throw new ImagePayloadException("incoming byte array cannot be null");
-        }
-        if (scanDPI <= 0) {
-            LOG.debug("scanDPI must be a positive integer, {} is not valid", scanDPI);
-            return extractedImage;
-        }
+      LOG.debug("loading and rendering pdf in order to copy page to image");
+      document = PDDocument.load(incomingObject);
+      PDFRenderer renderer = new PDFRenderer(document);
 
-        try {
+      BufferedImage imageBuffer = renderer.renderImageWithDPI(0, scanDPI, ImageType.RGB);
+      LOG.info("scanned page 1 to BufferedImage at {} DPI", scanDPI);
 
-            LOG.debug("loading and rendering pdf in order to copy page to image");
-            document = PDDocument.load(incomingObject);
-            PDFRenderer renderer = new PDFRenderer(document);
+      try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+        ImageIO.write(imageBuffer, "jpg", outputStream);
+        extractedImage = outputStream.toByteArray();
+      }
 
-            BufferedImage imageBuffer = renderer.renderImageWithDPI(0, scanDPI, ImageType.RGB);
-            LOG.info("scanned page 1 to BufferedImage at {} DPI", scanDPI);
+    } catch (IOException e) {
+      LOG.error("Incoming byte array is not a pdf file :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
 
-            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                ImageIO.write(imageBuffer, "jpg", outputStream);
-                extractedImage = outputStream.toByteArray();
-            }
+    } catch (IllegalArgumentException e) {
+      LOG.error("Error with pdf scanning operation :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
 
-        } catch (IOException e) {
-            LOG.error("Incoming byte array is not a pdf file :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-        } catch (IllegalArgumentException e) {
-            LOG.error("Error with pdf scanning operation :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-        } finally {
-            if (document != null) {
-                try {
-                    document.close();
-
-                } catch (IOException e) {
-                    LOG.error(e.getMessage());
-                    LOG.debug(e.getClass().getName(), e);
-                }
-            }
-        }
-
-        return extractedImage;
+    } finally {
+      if (document != null) {
+        document.close();
+      }
     }
+
+    return extractedImage;
+  }
 }

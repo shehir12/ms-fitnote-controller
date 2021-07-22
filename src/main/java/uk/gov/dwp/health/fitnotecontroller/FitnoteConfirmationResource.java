@@ -20,93 +20,74 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 
 @Path("/")
-public class FitnoteConfirmationResource {
-    private static final Logger LOG = LoggerFactory.getLogger(FitnoteConfirmationResource.class.getName());
-    private static final String ERROR_MSG = "Unable to process request";
-    private ImageStorage imageStorage;
-    private JsonValidator validator;
+public class FitnoteConfirmationResource extends AbstractResource {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FitnoteConfirmationResource.class.getName());
 
+  public FitnoteConfirmationResource(ImageStorage imageStore) {
+    super(imageStore);
+  }
 
-    public FitnoteConfirmationResource(ImageStorage imageStorage) {
-        this(imageStorage, new JsonValidator());
+  public FitnoteConfirmationResource(ImageStorage imageStore, JsonValidator jsonValidator) {
+    super(imageStore, jsonValidator);
+  }
+
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("/nino")
+  public Response confirmFitnote(String json) {
+    Response response;
+    try {
+      ImagePayload imagePayload = jsonValidator.validateAndTranslateConfirmation(json);
+      LOG.debug("Json validated");
+      imageStore.updateNinoDetails(imagePayload);
+
+      LOG.info("NINO updated");
+      response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
+
+    } catch (ImagePayloadException e) {
+      LOG.debug("Unable to process request examining payload", e);
+      return createImage400ErrorResponse(e, LOG);
+
+    } catch (IOException e) {
+      return createIOErrorResponse(e, LOG);
+
+    } catch (CryptoException e) {
+      return createCrypto500Response(e, LOG);
     }
+    return response;
+  }
 
-    public FitnoteConfirmationResource(ImageStorage imageStorage, JsonValidator validator) {
-        this.imageStorage = imageStorage;
-        this.validator = validator;
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("/mobile")
+  public Response confirmMobile(String json) {
+    Response response;
+    try {
+      ImagePayload imagePayload = jsonValidator.validateAndTranslateMobileConfirmation(json);
+      LOG.debug("Json validated");
+
+      imageStore.updateMobileDetails(imagePayload);
+      LOG.info("Mobile number updated");
+
+      response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
+
+    } catch (ImagePayloadException e) {
+      LOG.debug("Unable to process request when examining payload", e);
+      return createImage400ErrorResponse(e, LOG);
+
+    } catch (CryptoException e) {
+      response = createCrypto400Response(e, LOG);
+
+    } catch (IOException e) {
+      return createIOErrorResponse(e, LOG);
     }
+    return response;
+  }
 
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/nino")
-    public Response confirmFitnote(String json) {
-        Response response;
-        try {
-            ImagePayload imagePayload = validator.validateAndTranslateConfirmation(json);
-            LOG.debug("Json validated");
-            imageStorage.updateNinoDetails(imagePayload);
-
-            LOG.info("NINO updated");
-            response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
-
-        } catch (ImagePayloadException e) {
-            response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
-            LOG.error("ImagePayloadException exception :: {}", e.getMessage());
-            LOG.debug("Unable to process request examining payload", e);
-
-        } catch (IOException e) {
-            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
-            LOG.error("JsonProcessingException :: {}", e.getMessage());
-            LOG.debug(ERROR_MSG, e);
-
-        } catch (CryptoException e) {
-            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
-            LOG.error("CryptoException :: {}", e.getMessage());
-            LOG.debug(ERROR_MSG, e);
-
-        }
-        return response;
-    }
-
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/mobile")
-    public Response confirmMobile(String json) {
-        Response response;
-        try {
-            ImagePayload imagePayload = validator.validateAndTranslateMobileConfirmation(json);
-            LOG.debug("Json validated");
-
-            imageStorage.updateMobileDetails(imagePayload);
-            LOG.info("Mobile number updated");
-
-            response = createResponseOf(HttpStatus.SC_OK, createResponseFrom(imagePayload));
-
-        } catch (ImagePayloadException e) {
-            response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
-            LOG.debug("Unable to process request when examining payload", e);
-            LOG.error("ImagePayloadException :: {}", e.getMessage());
-
-        } catch (CryptoException e) {
-            response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_MSG);
-            LOG.debug("Unable to encrypt payload", e);
-            LOG.error("CryptoException :: {}", e.getMessage());
-
-        } catch (IOException e) {
-            response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_MSG);
-            LOG.error("IOException :: {}", e.getMessage());
-            LOG.debug(ERROR_MSG, e);
-        }
-        return response;
-    }
-
-    private String createResponseFrom(ImagePayload payload) throws JsonProcessingException {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
-        return mapper.writerWithView(Views.SessionOnly.class).writeValueAsString(payload);
-    }
-
-    private Response createResponseOf(int status, String message) {
-        return Response.status(status).entity(message).build();
-    }
+  private String createResponseFrom(ImagePayload payload) throws JsonProcessingException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
+    return mapper.writerWithView(Views.SessionOnly.class).writeValueAsString(payload);
+  }
 }

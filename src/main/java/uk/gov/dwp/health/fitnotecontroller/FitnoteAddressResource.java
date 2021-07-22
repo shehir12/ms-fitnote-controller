@@ -15,45 +15,42 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 @Path("/")
-public class FitnoteAddressResource {
-    private static final Logger LOG = LoggerFactory.getLogger(FitnoteAddressResource.class.getName());
-    private static final String ERROR_RESPONSE = "Unable to process request";
-    private JsonValidator jsonValidator;
-    private ImageStorage imageStore;
+public class FitnoteAddressResource extends AbstractResource {
+  private static final Logger LOG = LoggerFactory.getLogger(FitnoteAddressResource.class.getName());
 
-    public FitnoteAddressResource(ImageStorage imageStore) {
-        this(imageStore, new JsonValidator());
+  public FitnoteAddressResource(ImageStorage imageStore) {
+    super(imageStore);
+  }
+
+  public FitnoteAddressResource(ImageStorage imageStore, JsonValidator jsonValidator) {
+    super(imageStore, jsonValidator);
+  }
+
+
+  @POST
+  @Path("/address")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response updateAddress(String jsonBody) {
+    Response serviceResponse;
+    try {
+      Address receivedAddress = jsonValidator.validateAndTranslateAddress(jsonBody);
+      ImagePayload payload = imageStore.getPayload(receivedAddress.getSessionId());
+      payload.setClaimantAddress(receivedAddress);
+      imageStore.updateAddressDetails(payload);
+
+      serviceResponse = Response.status(HttpStatus.SC_OK).build();
+
+    } catch (NewAddressException e) {
+      serviceResponse = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_RESPONSE);
+      LOG.error("NewAddressException :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
+
+    } catch (Exception e) {
+      serviceResponse = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_RESPONSE);
+      LOG.error("Exception :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
     }
 
-    public FitnoteAddressResource(ImageStorage imageStore, JsonValidator jsonValidator) {
-        this.jsonValidator = jsonValidator;
-        this.imageStore = imageStore;
-    }
-
-    @POST
-    @Path("/address")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response updateAddress(String jsonBody) {
-        Response serviceResponse;
-        try {
-            Address receivedAddress = jsonValidator.validateAndTranslateAddress(jsonBody);
-            ImagePayload payload = imageStore.getPayload(receivedAddress.getSessionId());
-            payload.setClaimantAddress(receivedAddress);
-            imageStore.updateAddressDetails(payload);
-
-            serviceResponse = Response.status(HttpStatus.SC_OK).build();
-
-        } catch (NewAddressException e) {
-            serviceResponse = Response.status(HttpStatus.SC_BAD_REQUEST).entity(ERROR_RESPONSE).build();
-            LOG.error("NewAddressException :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-        } catch (Exception e) {
-            serviceResponse = Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_RESPONSE).build();
-            LOG.error("Exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-        }
-
-        return serviceResponse;
-    }
+    return serviceResponse;
+  }
 }

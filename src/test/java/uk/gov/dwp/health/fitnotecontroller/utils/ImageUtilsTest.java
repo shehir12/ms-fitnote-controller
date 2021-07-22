@@ -13,6 +13,7 @@ import java.io.IOException;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+
 public class ImageUtilsTest extends ImageUtils {
     private static final String IMAGE_FILE = "/DarkPage.jpg";
     private BufferedImage localImage;
@@ -41,7 +42,12 @@ public class ImageUtilsTest extends ImageUtils {
 
     @Test
     public void validateNoExceptionWhenChangeBrightnessWithNegativeValue() {
-        changeBrightness(localImage, -10);
+        int origBrightness = gatherBrightness(localImage, 0);
+
+        BufferedImage updatedImage = changeBrightness(localImage, -10);
+        int newBrightness = gatherBrightness(updatedImage, 0);
+
+        assertTrue(origBrightness > newBrightness);
     }
 
     @Test

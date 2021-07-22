@@ -1,15 +1,53 @@
 # Fitnote Controller
-[![Build Status](https://travis-ci.org/dwp/fitnote-controller.svg?branch=master)](https://travis-ci.org/dwp/fitnote-controller) [![Known Vulnerabilities](https://snyk.io/test/github/dwp/fitnote-controller/badge.svg)](https://snyk.io/test/github/dwp/fitnote-controller)
+[![Build Status](https://travis-ci.org/dwp/fitnote-controller.svg?branch=master)](https://travis-ci.org/dwp/fitnote-controller) [![Known Vulnerabilities](https://snyk.io/test/github/dwp/fitnote-controller/badge.svg)]
 
 Main service functionality for submitting, checking and adding additional claimant details to a submitted fit note.      
 
+Managed by DWP by Health PDU.
+
+## Table of contents
+
+* Development
+* Testing
+* Service Endpoints
+* Configuration
+* Health Checks
+* Schedules
+* Production Release
+
 ## Development
+
+Dev using Java 11, Dropwizard
 
 Clone repository and run `mvn clean package`
 
 Starting the service -
  
     cd target; java -jar fitnote-controller-<version>.jar server path/to/config.yml
+
+## Testing
+
+Tests using Java using Junit 4, Cucumber for Java
+
+Clone repository and run `mvn clean test`
+
+## Configuration
+
+      - AWS_ACCESS_KEY_ID= AWS KEY
+      - AWS_SECRET_ACCESS_KEY= SECRET AWS KEY
+      - SERVER_APP_PORT= PORT
+      - REDIS_STORE_URI= URI FOR REDIS CLUSTER
+      - KMS_ENDPOINT_OVERRIDE= KMS ENDPOINT
+      - REDIS_DATA_KEY_REQUESTID= REQ ID FOR REDIS
+      - SNS_DATA_KEY_REQUEST_ID= SNS DATA KEY ID
+      - SNS_TOPIC_NAME= SNS TOPIC
+      - SNS_ROUTING_KEY= SNS ROUTING KEY
+      - SNS_SUBJECT= SNS SUBJECT
+      - S3_ENDPOINT_OVERRIDE= S3 ENDPOINT
+      - ENDPOINT_OVERRIDE= AWS ENDPOINT OVERIDE
+      - S3_BUCKET_NAME= S3 BUCKET NAME
+      - REGION= AWS REGION
+      - ESTIMATED_REQUEST_MEMORY_MB= ESTIMATED MEM FOR EACH REQ
 
 ## Service Endpoints
 
@@ -40,8 +78,7 @@ Returns:-
 Returns:-
 
     {
-        "fitnoteStatus":"<status>", 
-        "barcodeStatus":"<status>"
+        "fitnoteStatus":"<status>"
     }
     
 * **200** :: Success.  Returns json status
@@ -57,8 +94,6 @@ currently the list of statuses are
 * `FAILED_IMG_OCR`
 * `FAILED_IMG_OCR_PARTIAL`
 * `PASS_IMG_OCR`
-* `FAILED_IMG_BARCODE`
-* `PASS_IMG_BARCODE`
 * `SUCCEEDED`
 * `FAILED_ERROR`
 
@@ -229,40 +264,48 @@ Return code :-
 * **400** :: Bad or Malformed content.  Returns what is missing (detailed error is logged)
 * **500** :: Internal error occurred.  Returns "Unable to process request" (error is logged)
 
-## Configuration Elements
+## Configuration Env Vars
 
-* `sessionExpiryTimeInSeconds` : the length of time before (in seconds) before an inactive session is cleared from the cache
-* `imageReplayExpirySeconds` : the length of time before the replay cache is cleared for a submitted image
-* `maxAllowedImageReplay` : the threshold for the same image to be replayed to the service before an error is thrown and the submission rejected
-* `imageHashSalt` : the 'salt' to use when creating the image hash for the replay cache
-* `redisStoreURI`: the URI of the Redis instance (eg. redis://localhost:6379)
-* `redisEncryptMessages`: whether to encrypt the ImagePayload before persisting to Redis
-* `redisKmsCryptoConfiguration`: The `CryptoConfig` object for KMS interaction for redis activities (when `redisEncryptMessages is true)
-* `snsRoutingKey` : the routing key (added to the headers) for SNS published messages
-* `snsTopicName` : the SNS topic exchange name
-* `snsSubject` : The subject of the SNS notification message
-* `snsEncryptMessages`: whether to encrypt the SNS messages
-* `snsKmsCryptoConfiguration`: The `CryptoConfig` object for KMS interaction for SNS activities
-* `ocrChecksEnabled` : is OCR enabled, defaults to **true**
-* `forceLandscapeImageSubmission` : force the submissions of landscape images, defaults to **true**
-* `tesseractFolderPath` : the tesseract configuration file path
-* `easPostCodeLookUpUrl` : the full url of the postcode service lookup
-* `sslTruststoreFilenameESA` : the trust store for the postcode service cert
-* `sslTruststorePasswordESA` : the postcode service trust store password
-* `esaDefaultRoutingForDRS` : the default routing code if esa postcode lookup fails
-* `rejectingOversizeImages` : works in conjunction with `targetImageSizeKB` and will force a reject if it is not possible to compress the image to the target size.  Defaults to **true**
-* `pdfScanDPI` : the DPI to use when the incoming document has been detected as PDF.  300 is the optimum (and default) value for this to generate a BufferedImage that is detailed enough to be read but small enough to be compressed to the target size.  >300 DPI will fail image compression.
-* `targetImageSizeKB` : the target compressed image size in KB defaults to **500**
-* `greyScale` : grey scale the image during compression, defaults to **true**
-* `maxLogChars` : the maximum number of OCR characters to output to the log (in debug mode), defaults to **50**
-* `targetBrightness` : the brightness to use to optimise the image for OCR, defaults to **179**
-* `borderLossPercentage` : the amount of border to clip, defaults to **10**
-* `scanTargetImageSize` : the compression image size to optimise for OCR scan, defaults to **1000**
-* `highTarget` : The maximum percentage threshold for accepted image OCR
-* `diagonalTarget` : the minimum success percentage on a diagonal corner of a 100% match, defaults to **20**
-* `contrastCutOff` : the contrast to apply against the image for optimal OCR, defaults to **105**
-* `topLeftText` (List\<String\>) : the text to look for in the top left corner
-* `topRightText` (List\<String\>) : the text to look for in the top right corner
-* `baseLeftText` (List\<String\>) : the text to look for in the bottom left corner
-* `baseRightText` (List\<String\>) : the text to look for in the bottom right corner
-* `estimatedRequestMemoryMb` : the expected request size (in megabytes) of a photo submissions, defaults to **3**.  if there is not enough free memory available to service the request it will be rejected
+* `SESSION_EXPIRY_TIME_IN_SECONDS` : the length of time before (in seconds) before an inactive session is cleared from the cache
+* `IMAGE_REPLAY_EXPIRY_SECONDS` : the length of time before the replay cache is cleared for a submitted image
+* `MAX_ALLOWED_IMAGE_REPLAY` : the threshold for the same image to be replayed to the service before an error is thrown and the submission rejected
+* `IMAGE_HASH_SALT` : the 'salt' to use when creating the image hash for the replay cache
+* `REDIS_STORE_URI`: the URI of the Redis instance (eg. redis://localhost:6379)
+* `REDIS_ENCRYPT_MESSAGES`: whether to encrypt the ImagePayload before persisting to Redis
+* `KMS_ENDPOINT_OVERRIDE/REDIS_DATA_KEY_REQUESTID`: The `CryptoConfig` object for KMS interaction for redis activities (when `redisEncryptMessages is true)
+* `SNS_ROUTING_KEY` : the routing key (added to the headers) for SNS published messages
+* `SNS_TOPIC_NAME` : the SNS topic exchange name
+* `SNS_SUBJECT` : The subject of the SNS notification message
+* `SNS_ENCRYPT_MESSAGES`: whether to encrypt the SNS messages
+* `KMS_ENDPOINT_OVERRIDE/SNS_DATA_KEY_REQUEST_ID`: The `CryptoConfig` object for KMS interaction for SNS activities
+* `OCR_CHECKS_ENABLED` : is OCR enabled, defaults to **true**
+* `FORCE_LANDSCAPE_IMAGE_SUBMISSION` : force the submissions of landscape images, defaults to **true**
+* `REJECTING_OVERSIZE_IMAGES` : works in conjunction with `targetImageSizeKB` and will force a reject if it is not possible to compress the image to the target size.  Defaults to **true**
+* `PDF_SCAN_DPI` : the DPI to use when the incoming document has been detected as PDF.  300 is the optimum (and default) value for this to generate a BufferedImage that is detailed enough to be read but small enough to be compressed to the target size.  >300 DPI will fail image compression.
+* `TARGET_IMAGE_SIZE_KB` : the target compressed image size in KB defaults to **500**
+* `GREY_SCALE` : grey scale the image during compression, defaults to **true**
+* `MAX_LOG_CHARS` : the maximum number of OCR characters to output to the log (in debug mode), defaults to **50**
+* `TARGET_BRIGHTNESS` : the brightness to use to optimise the image for OCR, defaults to **179**
+* `BORDER_LOSS_PERCENTAGE` : the amount of border to clip, defaults to **10**
+* `SCAN_TARGET_IMAGE_SIZE` : the compression image size to optimise for OCR scan, defaults to **1000**
+* `HIGH_TARGET` : The maximum percentage threshold for accepted image OCR
+* `DIAGONAL_TARGET` : the minimum success percentage on a diagonal corner of a 100% match, defaults to **20**
+* `CONTRAST_CUT_OFF` : the contrast to apply against the image for optimal OCR, defaults to **105**
+* `ESTIMATED_REQUEST_MEMORY_MB` : the expected request size (in megabytes) of a photo submissions, defaults to **3**.  if there is not enough free memory available to service the request it will be rejected
+
+
+## Healthcheck
+
+Health check can be found at **`/healthcheck` *[GET]***
+
+## Version-info (Enabled via the APPLICATION_INFO_ENABLED env var)
+
+Version info can be found at **`/version-info` *[GET]***
+
+### Schedules
+
+The CI pipeline has a stage which sets up a schedule to run the `develop` branch every night - the schedule can be found in the `CI/CD/Schedules` section of Gitlab.
+
+## Production Release
+
+To create production artefacts the following process must be followed https://confluence.service.dwpcloud.uk/display/DHWA/SRE

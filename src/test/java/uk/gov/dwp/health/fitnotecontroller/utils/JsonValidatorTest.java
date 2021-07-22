@@ -22,11 +22,10 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings({"squid:S1192", "squid:S00116"}) // allow string literals and non-standard variable names for clarity
+@SuppressWarnings({"squid:S1192", "squid:S00116", "squid:S5976"}) // allow string literals and non-standard variable names for clarity
+// not using parameterized test as not using latest junit 
 public class JsonValidatorTest extends JsonValidator {
     private static final String JPG_IMAGE_LANDSCAPE = "src/test/resources/FullPage_Landscape.jpg";
-    private static final String DATAMATRIX_IMAGE = "src/test/resources/working_barcode.jpg";
-    private String ENCODED_DATAMATRIX_STRING = null;
     private String ENCODED_LANDSCAPE_STRING = null;
 
     private static final String INVALID_HOUSE_LENGTH = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"123456789012345678901234567890123456\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
@@ -39,20 +38,12 @@ public class JsonValidatorTest extends JsonValidator {
     private static final String ADDRESS_MISSING_STREET = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\" , \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
     private static final String ADDRESS_MISSING_CITY = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\",  \"postcode\" : \"NE12 9LG\"}";
     private static final String ADDRESS_MISSING_POSTCODE = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\"}";
-    private String BARCODE_SUBMIT_VALID = "{ \"sessionId\" : \"123456\", \"barcodeImage\" : \"%s\"}";
-    private String BARCODE_SUBMIT_EMPTY_SESSION_ID = "{ \"sessionId\" : \"\", \"barcodeImage\" : \"%s\"}";
-    private String BARCODE_SUBMIT_MISSING_SESSION_ID = "{ \"barcodeImage\" : \"%s\"}";
 
     private JsonValidator validatorUnderTest = new JsonValidator();
 
     @Before
     public void setup() throws IOException {
         ENCODED_LANDSCAPE_STRING = Base64.encodeBase64String(FileUtils.readFileToByteArray(new File(JPG_IMAGE_LANDSCAPE)));
-        ENCODED_DATAMATRIX_STRING = Base64.encodeBase64String(FileUtils.readFileToByteArray(new File(DATAMATRIX_IMAGE)));
-
-        BARCODE_SUBMIT_VALID = String.format(BARCODE_SUBMIT_VALID, ENCODED_DATAMATRIX_STRING);
-        BARCODE_SUBMIT_MISSING_SESSION_ID = String.format(BARCODE_SUBMIT_MISSING_SESSION_ID, ENCODED_DATAMATRIX_STRING);
-        BARCODE_SUBMIT_EMPTY_SESSION_ID = String.format(BARCODE_SUBMIT_EMPTY_SESSION_ID, ENCODED_DATAMATRIX_STRING);
     }
 
     @Test
@@ -403,46 +394,6 @@ public class JsonValidatorTest extends JsonValidator {
         assertThat(addressReturned.getStreet(), is("Bakers Street"));
         assertThat(addressReturned.getCity(), is("London"));
         assertThat(addressReturned.getPostcode(), is("NE12 9LG"));
-    }
-
-
-    @Test
-    public void validQRSubmissionReturnsPayload() throws ImagePayloadException {
-        ImagePayload payload = validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_VALID);
-        assertNotNull(payload);
-        assertThat(payload.getSessionId(), is("123456"));
-        assertThat(payload.getBarcodeImage(), is(equalTo(ENCODED_DATAMATRIX_STRING)));
-    }
-
-    @Test
-    public void emptySessionIdOnQRSubmissionThrowsException() {
-        try {
-            validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_EMPTY_SESSION_ID);
-            fail("Should have thrown an ImagePayloadException");
-        } catch (ImagePayloadException e) {
-            assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-        }
-    }
-
-    @Test
-    public void missingSessionIdOnQRSubmissionThrowsException() {
-        try {
-            validatorUnderTest.validateAndTranslateBarcodeSubmission(BARCODE_SUBMIT_MISSING_SESSION_ID);
-            fail("Should have thrown an ImagePayloadException");
-        } catch (ImagePayloadException e) {
-            assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-        }
-
-    }
-
-    @Test
-    public void invalidJsonOnQRSubmissionThrowsException() {
-        try {
-            validatorUnderTest.validateAndTranslateBarcodeSubmission("{}");
-            fail("Should have thrown an ImagePayloadException");
-        } catch (ImagePayloadException e) {
-            assertTrue("Expecting an ImagePayloadException", e.getMessage().contains(SESSION_ID_IS_MANDATORY));
-        }
     }
 
 }

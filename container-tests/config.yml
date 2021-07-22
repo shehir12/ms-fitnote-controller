@@ -1,0 +1,15 @@
+# Documentation can be found here https://github.com/GoogleContainerTools/container-structure-test
+schemaVersion: "2.0.0"
+
+fileExistenceTests:
+  - name: 'Jar File'
+    path: '/ms-fitnote-controller.jar'
+    shouldExist: true
+  - name: 'Config File'
+    path: '/config.yml'
+    shouldExist: true
+  - name: 'Tessdata File'
+    path: '/tessdata'
+
+metadataTest:
+  entrypoint: [ "java", "-jar", "/ms-fitnote-controller.jar", "server",  "/config.yml"]

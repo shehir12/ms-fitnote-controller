@@ -1,0 +1,76 @@
+server:
+  applicationConnectors:
+    - type: ${SERVER_APP_CONNECTOR:-http}
+      port: ${SERVER_APP_PORT:-3004}
+  adminConnectors:
+    - type: ${SERVER_ADMIN_CONNECTOR:-http}
+      port: ${SERVER_ADMIN_PORT:-0}
+  requestLog:
+    type: ${SERVER_REQUEST_LOG_TYPE:-external}
+
+sessionExpiryTimeInSeconds: ${SESSION_EXPIRY_TIME_IN_SECONDS:-1800}
+
+imageReplayExpirySeconds: ${IMAGE_REPLAY_EXPIRY_SECONDS:-300}
+maxAllowedImageReplay: ${MAX_ALLOWED_IMAGE_REPLAY:-5}
+imageHashSalt: ${IMAGE_HASH_SALT:-NoNeedForAPerEnvHash}
+
+redisStoreURI: ${REDIS_STORE_URI}
+redisEncryptMessages: ${REDIS_ENCRYPT_MESSAGES:-true}
+
+redisKmsCryptoConfiguration:
+  kmsEndpointOverride: ${KMS_ENDPOINT_OVERRIDE:-null}
+  dataKeyRequestId: ${REDIS_DATA_KEY_REQUESTID}
+
+snsKmsCryptoConfiguration:
+  kmsEndpointOverride: ${KMS_ENDPOINT_OVERRIDE:-null}
+  dataKeyRequestId: ${SNS_DATA_KEY_REQUEST_ID}
+
+snsTopicName: ${SNS_TOPIC_NAME}
+snsRoutingKey: ${SNS_ROUTING_KEY}
+snsSubject: ${SNS_SUBJECT}
+snsEncryptMessages: ${SNS_ENCRYPT_MESSAGES:-true}
+
+snsConfiguration:
+  s3EndpointOverride: ${S3_ENDPOINT_OVERRIDE:-null}
+  endpointOverride: ${ENDPOINT_OVERRIDE:-null}
+  largePayloadSupportEnabled: ${LARGE_PAYLOAD_SUPPORT_ENABLED:-true}
+  pathStyleAccessEnabled: ${PATH_STYLE_ACCESS_ENABLED:-true}
+  s3BucketName: ${S3_BUCKET_NAME}
+  region: ${REGION:-EU_WEST_2}
+
+ocrChecksEnabled: ${OCR_CHECKS_ENABLED:-true}
+forceLandscapeImageSubmission: ${FORCE_LANDSCAPE_IMAGE_SUBMISSION:-false}
+tesseractFolderPath: /tessdata
+
+rejectingOversizeImages: ${REJECTING_OVERSIZE_IMAGES:-true}
+targetImageSizeKB: ${TARGET_IMAGE_SIZE_KB:-500}
+greyScale: ${GREY_SCALE:-true}
+
+pdfScanDPI: ${PDF_SCAN_DPI:-300}
+scanTargetImageSize: ${SCAN_TARGET_IMAGE_SIZE:-1000}
+
+highTarget: ${HIGH_TARGET:-100}
+diagonalTarget: ${DIAGONAL_TARGET:-20}
+
+maxLogChars: ${MAX_LOG_CHARS:-50}
+targetBrightness: ${TARGET_BRIGHTNESS:-178}
+borderLossPercentage: ${BORDER_LOSS_PERCENTAGE:-10}
+contrastCutOff: ${CONTRAST_CUT_OFF:-105}
+
+estimatedRequestMemoryMb: ${ESTIMATED_REQUEST_MEMORY_MB:-100}
+
+topLeftText:
+  - "Fitness for work"
+topRightText:
+  - "what to do now"
+  - "may be collected"
+baseLeftText:
+  - "Unique ID: Med 3"
+baseRightText:
+  - "signed this"
+  - "make a claim"
+
+logging:
+  type: ${LOGGING_TYPE:-external}
+
+applicationInfoEnabled: ${APPLICATION_INFO_ENABLED:-false}
