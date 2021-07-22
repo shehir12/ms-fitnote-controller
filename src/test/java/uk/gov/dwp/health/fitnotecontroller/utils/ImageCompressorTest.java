@@ -17,7 +17,9 @@ import java.io.File;
 import java.io.IOException;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
@@ -38,18 +40,25 @@ public class ImageCompressorTest {
 
     @Test
     public void testWithGreyScaleNormal() throws ImageCompressException, IOException {
-        when(config.isRejectingOversizeImages()).thenReturn(true);
-
-        ImageCompressor instance = new ImageCompressor(config);
-        FileUtils.writeByteArrayToFile(new File("src/test/resources/CompressorTest_GS.jpg"), instance.compressBufferedImage(baseImageNormal, TARGET_IMAGE_SIZE, true));
+        writeToFile("CompressorTest_GS.jpg", true);
     }
 
     @Test
     public void testWithColourNormal() throws ImageCompressException, IOException {
+        writeToFile("CompressorTest_Colour.jpg", false);
+    }
+
+    private void writeToFile(String fileName, boolean useGreyScale) throws ImageCompressException, IOException {
         when(config.isRejectingOversizeImages()).thenReturn(true);
 
+        String filePath = "src/test/resources/" + fileName;
+
         ImageCompressor instance = new ImageCompressor(config);
-        FileUtils.writeByteArrayToFile(new File("src/test/resources/CompressorTest_Colour.jpg"), instance.compressBufferedImage(baseImageNormal, TARGET_IMAGE_SIZE, false));
+        FileUtils.writeByteArrayToFile(new File("src/test/resources/" + fileName),
+            instance.compressBufferedImage(baseImageNormal, TARGET_IMAGE_SIZE, useGreyScale));
+
+        File file = new File(filePath);
+        assertTrue(file.exists());
     }
 
     @Test
@@ -71,7 +80,11 @@ public class ImageCompressorTest {
         when(config.isRejectingOversizeImages()).thenReturn(true);
 
         ImageCompressor instance = new ImageCompressor(config);
-        instance.compressBufferedImage(ImageIO.read(new ByteArrayInputStream(PdfImageExtractor.extractImage(standardPdfDoc, 300))), 500, false);
+        assertNotNull(instance.compressBufferedImage(
+            ImageIO.read(
+                new ByteArrayInputStream(PdfImageExtractor.extractImage(standardPdfDoc, 300))),
+            500, false));
+
     }
 
     @Test

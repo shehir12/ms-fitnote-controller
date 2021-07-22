@@ -1,6 +1,6 @@
 server:
   applicationConnectors:
-  - type: http 
+  - type: http
     port: 9101
   adminConnectors:
   - type: http
@@ -10,20 +10,28 @@ server:
 
 sessionExpiryTimeInSeconds: 200
 
-imageReplayExpirySeconds: 100
+imageReplayExpirySeconds: 30
 maxAllowedImageReplay: 10
 imageHashSalt: salty
 
-redisStoreURI: redis://localhost:7000
+redisStoreURI: redis://redis-cluster:7000
 
 snsTopicName: fitnote-topic-exchange
 snsRoutingKey: sns.fitnote.new
 snsSubject: fitnote-controller
 snsEncryptMessages: false
 
+redisKmsCryptoConfiguration:
+  kmsEndpointOverride: http://localstack:4566
+  dataKeyRequestId: alias/test_request_id
+
+snsKmsCryptoConfiguration:
+  kmsEndpointOverride: http://localstack:4566
+  dataKeyRequestId: alias/test_request_id
+
 snsConfiguration:
-  s3EndpointOverride: "http://localhost:4572"
-  endpointOverride: "http://localhost:4575"
+  s3EndpointOverride: "http://localstack:4566"
+  endpointOverride: "http://localstack:4566"
   largePayloadSupportEnabled: true
   pathStyleAccessEnabled: true
   s3BucketName: "sns-bucket"
@@ -42,6 +50,7 @@ scanTargetImageSize: 1000
 
 highTarget: 100
 diagonalTarget: 20
+
 
 maxLogChars: 50
 targetBrightness: 178
@@ -65,4 +74,4 @@ baseRightText:
 logging:
   level: INFO
   loggers:
-    "uk.gov": DEBUG
+    "uk.gov": ERROR

@@ -12,179 +12,158 @@ import uk.gov.dwp.regex.NinoValidator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ImagePayload {
-    private static final Logger LOG = LoggerFactory.getLogger(ImagePayload.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ImagePayload.class.getName());
 
-    public enum Status {
-        CREATED,
-        UPLOADED,
-        CHECKING,
-        FAILED_IMG_SIZE,
-        PASS_IMG_SIZE,
-        FAILED_IMG_OCR,
-        FAILED_IMG_OCR_PARTIAL,
-        PASS_IMG_OCR,
-        FAILED_IMG_BARCODE,
-        PASS_IMG_BARCODE,
-        SUCCEEDED,
-        FAILED_ERROR
+  public enum Status {
+    CREATED,
+    UPLOADED,
+    CHECKING,
+    FAILED_IMG_SIZE,
+    PASS_IMG_SIZE,
+    FAILED_IMG_OCR,
+    FAILED_IMG_OCR_PARTIAL,
+    PASS_IMG_OCR,
+    SUCCEEDED,
+    FAILED_ERROR
+  }
+
+  @JsonView({
+      Views.SessionOnly.class,
+      Views.QueryNinoDetails.class,
+      Views.QueryAddressDetails.class,
+      Views.QueryMobileDetails.class
+  })
+  private String sessionId;
+
+  private byte[] image;
+  private long expiryTime;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.QueryNinoDetails.class)
+  private String nino;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.QueryMobileDetails.class)
+  private String mobileNumber;
+
+  private Status fitnoteCheckStatus;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.QueryAddressDetails.class)
+  private Address claimantAddress;
+
+  public long getExpiryTime() {
+    return expiryTime;
+  }
+
+  public void setExpiryTime(long expiryTime) {
+    this.expiryTime = expiryTime;
+  }
+
+  public NinoValidator getNinoObject() {
+    if (nino == null) {
+      return null;
+    } else {
+      return (nino.length() == 9)
+          ? new NinoValidator(nino.substring(0, 8), nino.substring(8))
+          : new NinoValidator(nino, "");
     }
+  }
 
-    @JsonView({Views.SessionOnly.class, Views.QueryNinoDetails.class, Views.QueryAddressDetails.class, Views.QueryMobileDetails.class})
-    private String sessionId;
+  @JsonIgnore
+  public int getRawImageSize() {
+    return this.image != null ? this.image.length : 0;
+  }
 
-    private byte[] image;
-    private long expiryTime;
+  public String getNino() {
+    return nino;
+  }
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonView(Views.QueryNinoDetails.class)
-    private String nino;
+  public void setSessionId(String sessionId) {
+    this.sessionId = sessionId;
+  }
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonView(Views.QueryMobileDetails.class)
-    private String mobileNumber;
+  public void setNino(String nino) {
+    this.nino = nino;
+  }
 
-    private Status fitnoteCheckStatus;
-    private Status barcodeCheckStatus;
-    private byte[] barcodeImage;
-    private BarcodeContents barcodeContents;
+  public String getMobileNumber() {
+    return mobileNumber;
+  }
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonView(Views.QueryAddressDetails.class)
-    private Address claimantAddress;
+  public void setMobileNumber(String mobileNumber) {
+    this.mobileNumber = mobileNumber;
+  }
 
-    public long getExpiryTime() {
-        return expiryTime;
-    }
+  public String getImage() {
+    return uncompress(image);
+  }
 
-    public void setExpiryTime(long expiryTime) {
-        this.expiryTime = expiryTime;
-    }
+  public void setImage(String image) {
+    this.image = compress(image);
+  }
 
-    public NinoValidator getNinoObject() {
-        if (nino == null) {
-            return null;
-        } else {
-            return (nino.length() == 9) ? new NinoValidator(nino.substring(0, 8), nino.substring(8)) : new NinoValidator(nino, "");
-        }
-    }
+  public String getSessionId() {
+    return sessionId;
+  }
 
-    @JsonIgnore
-    public int getRawImageSize() {
-        return this.image != null ? this.image.length : 0;
-    }
+  public void setFitnoteCheckStatus(Status fitnoteCheckStatus) {
+    this.fitnoteCheckStatus = fitnoteCheckStatus;
+  }
 
-    public String getNino() {
-        return nino;
-    }
+  public Status getFitnoteCheckStatus() {
+    return fitnoteCheckStatus;
+  }
 
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
-    }
+  public Address getClaimantAddress() {
+    return claimantAddress;
+  }
 
-    public void setNino(String nino) {
-        this.nino = nino;
-    }
+  public void setClaimantAddress(Address claimantAddress) {
+    this.claimantAddress = claimantAddress;
+  }
 
-    public String getMobileNumber() {
-        return mobileNumber;
-    }
+  private byte[] compress(String str) {
+    if (str != null) {
+      try {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+          GZIPOutputStream gzip = new GZIPOutputStream(out);
+          gzip.write(str.getBytes(StandardCharsets.UTF_8));
+          gzip.close();
 
-    public void setMobileNumber(String mobileNumber) {
-        this.mobileNumber = mobileNumber;
-    }
-
-    public String getImage() {
-        return uncompress(image);
-    }
-
-    public void setImage(String image) {
-        this.image = compress(image);
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public Status getBarcodeCheckStatus() {
-        return barcodeCheckStatus;
-    }
-
-    public void setBarcodeCheckStatus(Status barcodeCheckStatus) {
-        this.barcodeCheckStatus = barcodeCheckStatus;
-    }
-
-    public void setFitnoteCheckStatus(Status fitnoteCheckStatus) {
-        this.fitnoteCheckStatus = fitnoteCheckStatus;
-    }
-
-    public Status getFitnoteCheckStatus() {
-        return fitnoteCheckStatus;
-    }
-
-    public Address getClaimantAddress() {
-        return claimantAddress;
-    }
-
-    public void setClaimantAddress(Address claimantAddress) {
-        this.claimantAddress = claimantAddress;
-    }
-
-    public String getBarcodeImage() {
-        return uncompress(barcodeImage);
-    }
-
-    public void setBarcodeImage(String barcodeImage) {
-        this.barcodeImage = compress(barcodeImage);
-    }
-
-    public BarcodeContents getBarcodeContents() {
-        return barcodeContents;
-    }
-
-    public void setBarcodeContents(BarcodeContents barcodeContents) {
-        this.barcodeContents = barcodeContents;
-    }
-
-    private byte[] compress(String str) {
-        if (str != null) {
-            try {
-                try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                    GZIPOutputStream gzip = new GZIPOutputStream(out);
-                    gzip.write(str.getBytes());
-                    gzip.close();
-
-                    return out.toByteArray();
-                }
-
-            } catch (IOException e) {
-                LOG.error("Error compressing string : {}", e.getMessage());
-                LOG.debug(e.getClass().getName(), e);
-            }
+          return out.toByteArray();
         }
 
-        return null; //NOSONAR - we want to return null
+      } catch (IOException e) {
+        LOG.error("Error compressing string : {}", e.getMessage());
+        LOG.debug(e.getClass().getName(), e);
+      }
     }
 
-    private String uncompress(byte[] str) {
-        if (str != null) {
-            GZIPInputStream gzipIn = null;
-            try {
+    return null; // NOSONAR - we want to return null
+  }
 
-                try (ByteArrayInputStream inSteam = new ByteArrayInputStream(str)) {
-                    gzipIn = new GZIPInputStream(inSteam);
-                }
+  private String uncompress(byte[] str) {
+    if (str != null) {
+      GZIPInputStream gzipIn = null;
+      try {
 
-                return IOUtils.toString(gzipIn);
-            } catch (IOException e) {
-                LOG.error("Error uncompressing string : {}", e.getMessage());
-                LOG.debug(e.getClass().getName(), e);
-            }
+        try (ByteArrayInputStream inSteam = new ByteArrayInputStream(str)) {
+          gzipIn = new GZIPInputStream(inSteam);
         }
-        return null;
+
+        return IOUtils.toString(gzipIn);
+      } catch (IOException e) {
+        LOG.error("Error uncompressing string : {}", e.getMessage());
+        LOG.debug(e.getClass().getName(), e);
+      }
     }
+    return null;
+  }
 }

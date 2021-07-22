@@ -6,36 +6,36 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
 public class ImageHashStore {
-    private String createDateTime;
-    private String lastSubmitted;
-    private int submissionCount;
+  private String createDateTime;
+  private String lastSubmitted;
+  private int submissionCount;
 
-    public ImageHashStore() {
-        // for serialisation purposes
-    }
+  public ImageHashStore() {
+    // for serialisation purposes
+  }
 
-    public int getSubmissionCount() {
-        return submissionCount;
-    }
+  public int getSubmissionCount() {
+    return submissionCount;
+  }
 
-    public void incSubmissionCount() {
-        this.submissionCount++;
-    }
+  public void incSubmissionCount() {
+    this.submissionCount++;
+  }
 
-    public String getLastSubmitted() {
-        return lastSubmitted;
-    }
+  public String getLastSubmitted() {
+    return lastSubmitted;
+  }
 
-    public void updateLastSubmitted() {
-        this.lastSubmitted = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-    }
+  public void updateLastSubmitted() {
+    this.lastSubmitted = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+  }
 
-    public String getCreateDateTime() {
-        return createDateTime;
-    }
+  public String getCreateDateTime() {
+    return createDateTime;
+  }
 
-    @JsonIgnore
-    public void initCreateDateTime() {
-        this.createDateTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-    }
+  @JsonIgnore
+  public void initCreateDateTime() {
+    this.createDateTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+  }
 }

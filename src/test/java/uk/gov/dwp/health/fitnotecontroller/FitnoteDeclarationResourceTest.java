@@ -71,7 +71,7 @@ public class FitnoteDeclarationResourceTest {
     @Test
     public void returns200WithValidAcceptedDeclarationPlainContent() throws DeclarationException, IOException, ImagePayloadException, CryptoException, NoSuchMethodException, IllegalAccessException, InstantiationException, EventsMessageException, InvocationTargetException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
-        ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
+        ImagePayload payload = buildImagePayload("i am image", "123456", "AA370773A", "123456", true);
 
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
 
@@ -88,7 +88,7 @@ public class FitnoteDeclarationResourceTest {
     @Test
     public void returns200WithValidAcceptedDeclarationEncryptedContent() throws DeclarationException, IOException, ImagePayloadException, CryptoException, NoSuchMethodException, IllegalAccessException, InstantiationException, EventsMessageException, InvocationTargetException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
-        ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "123456", true);
+        ImagePayload payload = buildImagePayload("i am image", "123456", "AA370773A", "123456", true);
 
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
 
@@ -106,7 +106,7 @@ public class FitnoteDeclarationResourceTest {
     @Test
     public void return400WithMissingImagePayload() throws IOException, DeclarationException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
-        ImagePayload payload = buildImagePayload(null, "123456", "NINO", "123456", false);
+        ImagePayload payload = buildImagePayload(null, "123456", "AA370773A", "123456", false);
         payload.setClaimantAddress(new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class));
 
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
@@ -140,7 +140,7 @@ public class FitnoteDeclarationResourceTest {
     @Test
     public void return400WithMissingAddress() throws IOException, DeclarationException, ImagePayloadException, CryptoException {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
-        ImagePayload payload = buildImagePayload("i am an image", "123456", "NINO", "123456", true);
+        ImagePayload payload = buildImagePayload("i am an image", "123456", "AA370773A", "123456", true);
 
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
         when(imageStore.getPayload("123456")).thenReturn(payload);
@@ -238,7 +238,7 @@ public class FitnoteDeclarationResourceTest {
         Declaration declaration = new ObjectMapper().readValue(ACCEPTED_DECLARATION, Declaration.class);
         when(jsonValidator.validateAndTranslateDeclaration(ACCEPTED_DECLARATION)).thenReturn(declaration);
 
-        ImagePayload payload = buildImagePayload("i am image", "123456", "NINO", "234567", false);
+        ImagePayload payload = buildImagePayload("i am image", "123456", "AA370773A", "234567", false);
 
         Address mockNewAddress = new ObjectMapper().readValue(VALID_NEW_ADDRESS, Address.class);
         payload.setClaimantAddress(mockNewAddress);

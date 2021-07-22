@@ -6,259 +6,276 @@ import uk.gov.dwp.crypto.SecureStrings;
 import uk.gov.dwp.health.crypto.CryptoConfig;
 import uk.gov.dwp.health.messageq.amazon.items.AmazonConfigBase;
 
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
 import javax.validation.constraints.NotNull;
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 public class FitnoteControllerConfiguration extends Configuration {
-    private SecureStrings cipher = new SecureStrings();
+  private SecureStrings cipher = new SecureStrings();
 
-    @NotNull
-    @JsonProperty("sessionExpiryTimeInSeconds")
-    private long sessionExpiryTimeInSeconds;
+  @NotNull
+  @JsonProperty("sessionExpiryTimeInSeconds")
+  private long sessionExpiryTimeInSeconds;
 
-    @NotNull
-    @JsonProperty("imageReplayExpirySeconds")
-    private long imageReplayExpirySeconds;
+  @NotNull
+  @JsonProperty("imageReplayExpirySeconds")
+  private long imageReplayExpirySeconds;
 
-    @JsonProperty("maxAllowedImageReplay")
-    private int maxAllowedImageReplay = 10;
+  @JsonProperty("maxAllowedImageReplay")
+  private int maxAllowedImageReplay = 10;
 
-    @NotNull
-    @JsonProperty("imageHashSalt")
-    private SealedObject imageHashSalt;
+  @NotNull
+  @JsonProperty("imageHashSalt")
+  private SealedObject imageHashSalt;
 
-    @NotNull
-    @JsonProperty("redisStoreURI")
-    private String redisStoreURI;
+  @NotNull
+  @JsonProperty("redisStoreURI")
+  private String redisStoreURI;
 
-    @JsonProperty("ocrChecksEnabled")
-    private boolean ocrChecksEnabled = true;
+  @JsonProperty("ocrChecksEnabled")
+  private boolean ocrChecksEnabled = true;
 
-    @JsonProperty("forceLandscapeImageSubmission")
-    private boolean landscapeImageEnforced = true;
+  @JsonProperty("forceLandscapeImageSubmission")
+  private boolean landscapeImageEnforced = true;
 
-    @NotNull
-    @JsonProperty("tesseractFolderPath")
-    private String tesseractFolderPath;
+  @NotNull
+  @JsonProperty("tesseractFolderPath")
+  private String tesseractFolderPath;
 
-    @JsonProperty("rejectingOversizeImages")
-    private boolean rejectingOversizeImages = true;
+  @JsonProperty("rejectingOversizeImages")
+  private boolean rejectingOversizeImages = true;
 
-    @JsonProperty("pdfScanDPI")
-    private int pdfScanDPI = 300;
+  @JsonProperty("pdfScanDPI")
+  private int pdfScanDPI = 300;
 
-    @JsonProperty("targetImageSizeKB")
-    private int targetImageSizeKB = 500;
+  @JsonProperty("targetImageSizeKB")
+  private int targetImageSizeKB = 500;
 
-    @JsonProperty("greyScale")
-    private boolean greyScale = true;
+  @JsonProperty("greyScale")
+  private boolean greyScale = true;
 
-    @JsonProperty("maxLogChars")
-    private int maxLogChars = 50;
+  @JsonProperty("maxLogChars")
+  private int maxLogChars = 50;
 
-    @JsonProperty("targetBrightness")
-    private int targetBrightness = 179;
+  @JsonProperty("targetBrightness")
+  private int targetBrightness = 179;
 
-    @JsonProperty("borderLossPercentage")
-    private int borderLossPercentage = 10;
+  @JsonProperty("borderLossPercentage")
+  private int borderLossPercentage = 10;
 
-    @JsonProperty("scanTargetImageSize")
-    private int scanTargetImageSizeKb = 1000;
+  @JsonProperty("scanTargetImageSize")
+  private int scanTargetImageSizeKb = 1000;
 
-    @JsonProperty("highTarget")
-    private int highTarget = 100;
+  @JsonProperty("highTarget")
+  private int highTarget = 100;
 
-    @JsonProperty("diagonalTarget")
-    private int diagonalTarget = 20;
+  @JsonProperty("diagonalTarget")
+  private int diagonalTarget = 20;
 
-    @JsonProperty("contrastCutOff")
-    private int contrastCutOff = 105;
+  @JsonProperty("contrastCutOff")
+  private int contrastCutOff = 105;
 
-    @JsonProperty("ocrVerticalSlice")
-    private int ocrVerticalSlice = 6;
+  @JsonProperty("ocrVerticalSlice")
+  private int ocrVerticalSlice = 6;
 
-    @NotNull
-    @JsonProperty("topLeftText")
-    private List<String> topLeftText;
+  @NotNull
+  @JsonProperty("topLeftText")
+  private List<String> topLeftText;
 
-    @NotNull
-    @JsonProperty("topRightText")
-    private List<String> topRightText;
+  @NotNull
+  @JsonProperty("topRightText")
+  private List<String> topRightText;
 
-    @NotNull
-    @JsonProperty("baseLeftText")
-    private List<String> baseLeftText;
+  @NotNull
+  @JsonProperty("baseLeftText")
+  private List<String> baseLeftText;
 
-    @NotNull
-    @JsonProperty("baseRightText")
-    private List<String> baseRightText;
+  @NotNull
+  @JsonProperty("baseRightText")
+  private List<String> baseRightText;
 
-    @JsonProperty("estimatedRequestMemoryMb")
-    private int estimatedRequestMemoryMb = 25;
+  @JsonProperty("estimatedRequestMemoryMb")
+  private int estimatedRequestMemoryMb = 25;
 
-    @NotNull
-    @JsonProperty("snsTopicName")
-    private String snsTopicName;
+  @NotNull
+  @JsonProperty("snsTopicName")
+  private String snsTopicName;
 
-    @NotNull
-    @JsonProperty("snsRoutingKey")
-    private String snsRoutingKey;
+  @NotNull
+  @JsonProperty("snsRoutingKey")
+  private String snsRoutingKey;
 
-    @NotNull
-    @JsonProperty("snsSubject")
-    private String snsSubject;
+  @NotNull
+  @JsonProperty("snsSubject")
+  private String snsSubject;
 
-    @JsonProperty("snsEncryptMessages")
-    private boolean snsEncryptMessages = true;
+  @JsonProperty("snsEncryptMessages")
+  private boolean snsEncryptMessages = true;
 
-    @NotNull
-    @JsonProperty("snsConfiguration")
-    private AmazonConfigBase snsConfiguration;
+  @NotNull
+  @JsonProperty("snsConfiguration")
+  private AmazonConfigBase snsConfiguration;
 
-    @NotNull
-    @JsonProperty("redisEncryptMessages")
-    private boolean redisEncryptMessages;
+  @NotNull
+  @JsonProperty("redisEncryptMessages")
+  private boolean redisEncryptMessages;
 
-    @JsonProperty("snsKmsCryptoConfiguration")
-    private CryptoConfig snsKmsCryptoConfiguration;
+  @JsonProperty("snsKmsCryptoConfiguration")
+  private CryptoConfig snsKmsCryptoConfiguration;
 
-    @JsonProperty("redisKmsCryptoConfiguration")
-    private CryptoConfig redisKmsCryptoConfiguration;
+  @JsonProperty("redisKmsCryptoConfiguration")
+  private CryptoConfig redisKmsCryptoConfiguration;
 
-    public boolean isOcrChecksEnabled() {
-        return ocrChecksEnabled;
-    }
+  @JsonProperty("applicationInfoEnabled")
+  private boolean applicationInfoEnabled;
 
-    public String getTesseractFolderPath() {
-        return tesseractFolderPath;
-    }
+  public FitnoteControllerConfiguration() throws NoSuchPaddingException,
+      NoSuchAlgorithmException, InvalidKeyException {
+    // Empty constructor
+  }
 
-    public boolean isLandscapeImageEnforced() {
-        return landscapeImageEnforced;
-    }
+  public boolean isApplicationInfoEnabled() {
+    return applicationInfoEnabled;
+  }
 
-    public boolean isRejectingOversizeImages() {
-        return rejectingOversizeImages;
-    }
+  public boolean isOcrChecksEnabled() {
+    return ocrChecksEnabled;
+  }
 
-    public int getTargetImageSizeKB() {
-        return targetImageSizeKB;
-    }
+  public String getTesseractFolderPath() {
+    return tesseractFolderPath;
+  }
 
-    public boolean isGreyScale() {
-        return greyScale;
-    }
+  public boolean isLandscapeImageEnforced() {
+    return landscapeImageEnforced;
+  }
 
-    public int getMaxLogChars() {
-        return maxLogChars;
-    }
+  public boolean isRejectingOversizeImages() {
+    return rejectingOversizeImages;
+  }
 
-    public int getBorderLossPercentage() {
-        return borderLossPercentage;
-    }
+  public int getTargetImageSizeKB() {
+    return targetImageSizeKB;
+  }
 
-    public int getTargetBrightness() {
-        return targetBrightness;
-    }
+  public boolean isGreyScale() {
+    return greyScale;
+  }
 
-    public int getScanTargetImageSizeKb() {
-        return scanTargetImageSizeKb;
-    }
+  public int getMaxLogChars() {
+    return maxLogChars;
+  }
 
-    public int getHighTarget() {
-        return highTarget;
-    }
+  public int getBorderLossPercentage() {
+    return borderLossPercentage;
+  }
 
-    public int getDiagonalTarget() {
-        return diagonalTarget;
-    }
+  public int getTargetBrightness() {
+    return targetBrightness;
+  }
 
-    public int getContrastCutOff() {
-        return contrastCutOff;
-    }
+  public int getScanTargetImageSizeKb() {
+    return scanTargetImageSizeKb;
+  }
 
-    public List<String> getTopLeftText() {
-        return topLeftText;
-    }
+  public int getHighTarget() {
+    return highTarget;
+  }
 
-    public List<String> getTopRightText() {
-        return topRightText;
-    }
+  public int getDiagonalTarget() {
+    return diagonalTarget;
+  }
 
-    public List<String> getBaseLeftText() {
-        return baseLeftText;
-    }
+  public int getContrastCutOff() {
+    return contrastCutOff;
+  }
 
-    public List<String> getBaseRightText() {
-        return baseRightText;
-    }
+  public List<String> getTopLeftText() {
+    return topLeftText;
+  }
 
-    public int getEstimatedRequestMemoryMb() {
-        return estimatedRequestMemoryMb;
-    }
+  public List<String> getTopRightText() {
+    return topRightText;
+  }
 
-    public int getPdfScanDPI() {
-        return pdfScanDPI;
-    }
+  public List<String> getBaseLeftText() {
+    return baseLeftText;
+  }
 
-    public int getMaxAllowedImageReplay() {
-        return maxAllowedImageReplay;
-    }
+  public List<String> getBaseRightText() {
+    return baseRightText;
+  }
 
-    public String getImageHashSalt() {
-        return cipher.revealString(imageHashSalt);
-    }
+  public int getEstimatedRequestMemoryMb() {
+    return estimatedRequestMemoryMb;
+  }
 
-    public void setImageHashSalt(String imageHashSalt) {
-        this.imageHashSalt = cipher.sealString(imageHashSalt);
-    }
+  public int getPdfScanDPI() {
+    return pdfScanDPI;
+  }
 
-    public String getRedisStoreURI() {
-        return redisStoreURI;
-    }
+  public int getMaxAllowedImageReplay() {
+    return maxAllowedImageReplay;
+  }
 
-    public CryptoConfig getRedisKmsCryptoConfiguration() {
-        return redisKmsCryptoConfiguration;
-    }
+  public String getImageHashSalt() {
+    return cipher.revealString(imageHashSalt);
+  }
 
-    public boolean isRedisEncryptMessages() {
-        return redisEncryptMessages;
-    }
+  public void setImageHashSalt(String imageHashSalt) throws IOException, IllegalBlockSizeException {
+    this.imageHashSalt = cipher.sealString(imageHashSalt);
+  }
 
-    public long getSessionExpiryTimeInSeconds() {
-        return sessionExpiryTimeInSeconds;
-    }
+  public String getRedisStoreURI() {
+    return redisStoreURI;
+  }
 
-    public long getImageReplayExpirySeconds() {
-        return imageReplayExpirySeconds;
-    }
+  public CryptoConfig getRedisKmsCryptoConfiguration() {
+    return redisKmsCryptoConfiguration;
+  }
 
-    public String getSnsTopicName() {
-        return snsTopicName;
-    }
+  public boolean isRedisEncryptMessages() {
+    return redisEncryptMessages;
+  }
 
-    public String getSnsRoutingKey() {
-        return snsRoutingKey;
-    }
+  public long getSessionExpiryTimeInSeconds() {
+    return sessionExpiryTimeInSeconds;
+  }
 
-    public String getSnsSubject() {
-        return snsSubject;
-    }
+  public long getImageReplayExpirySeconds() {
+    return imageReplayExpirySeconds;
+  }
 
-    public boolean isSnsEncryptMessages() {
-        return snsEncryptMessages;
-    }
+  public String getSnsTopicName() {
+    return snsTopicName;
+  }
 
-    public AmazonConfigBase getSnsConfiguration() {
-        return snsConfiguration;
-    }
+  public String getSnsRoutingKey() {
+    return snsRoutingKey;
+  }
 
-    public CryptoConfig getSnsKmsCryptoConfiguration() {
-        return snsKmsCryptoConfiguration;
-    }
+  public String getSnsSubject() {
+    return snsSubject;
+  }
 
-    public int getOcrVerticalSlice() {
-        return ocrVerticalSlice;
-    }
+  public boolean isSnsEncryptMessages() {
+    return snsEncryptMessages;
+  }
+
+  public AmazonConfigBase getSnsConfiguration() {
+    return snsConfiguration;
+  }
+
+  public CryptoConfig getSnsKmsCryptoConfiguration() {
+    return snsKmsCryptoConfiguration;
+  }
+
+  public int getOcrVerticalSlice() {
+    return ocrVerticalSlice;
+  }
 }

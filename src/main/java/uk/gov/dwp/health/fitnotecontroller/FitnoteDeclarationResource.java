@@ -30,151 +30,175 @@ import java.util.Collections;
 import java.util.UUID;
 
 @Path("/")
-public class FitnoteDeclarationResource {
-    private static final Logger LOG = LoggerFactory.getLogger(FitnoteDeclarationResource.class.getName());
-    private static final String ERROR_MSG = "Unable to process request";
-    private FitnoteControllerConfiguration config;
-    private MessagePublisher snsPublisher;
-    private JsonValidator jsonValidator;
-    private ImageStorage imageStore;
+public class FitnoteDeclarationResource extends AbstractResource {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FitnoteDeclarationResource.class.getName());
+  private FitnoteControllerConfiguration config;
+  private MessagePublisher snsPublisher;
 
-    public FitnoteDeclarationResource(ImageStorage imageStore,
-                                      MessagePublisher snsPublisher,
-                                      FitnoteControllerConfiguration config) {
-        this(imageStore, new JsonValidator(), snsPublisher, config);
+  public FitnoteDeclarationResource(
+      ImageStorage imageStore,
+      MessagePublisher snsPublisher,
+      FitnoteControllerConfiguration config) {
+    this(imageStore, new JsonValidator(), snsPublisher, config);
+  }
+
+  public FitnoteDeclarationResource(
+      ImageStorage imageStore,
+      JsonValidator jsonValidator,
+      MessagePublisher snsPublisher,
+      FitnoteControllerConfiguration config) {
+    super(imageStore, jsonValidator);
+
+    this.jsonValidator = jsonValidator;
+    this.snsPublisher = snsPublisher;
+    this.imageStore = imageStore;
+    this.config = config;
+  }
+
+  @POST
+  @Path("/declaration")
+  @Produces(MediaType.APPLICATION_JSON)
+  @SuppressWarnings("squid:S5411") // surpress use primitive boolean as it uses null check
+  public Response submitDeclaration(String jsonBody) {
+    try {
+      Declaration declaration = jsonValidator.validateAndTranslateDeclaration(jsonBody);
+      LOG.debug("Json validated correctly");
+
+      if (!declaration.isAccepted()) {
+        LOG.info("Declaration was REJECTED by the user");
+        imageStore.clearSession(declaration.getSessionId());
+        return Response.status(HttpStatus.SC_OK).build();
+      }
+
+      LOG.info("Declaration ACCEPTED by the user");
+      ImagePayload imagePayloadToSubmit = imageStore.getPayload(declaration.getSessionId());
+
+      if (imagePayloadToSubmit.getImage() == null) {
+        LOG.debug("REJECT :: no image data to process for session {}", declaration.getSessionId());
+        return Response.status(HttpStatus.SC_BAD_REQUEST)
+            .entity("Cannot process declaration without a Fitnote Image")
+            .build();
+      }
+
+      if (!imagePayloadToSubmit.getFitnoteCheckStatus().equals(ImagePayload.Status.SUCCEEDED)) {
+        LOG.debug(
+            "REJECT :: the fitnote image was not scanned successfully for session {}",
+            declaration.getSessionId());
+        return Response.status(HttpStatus.SC_BAD_REQUEST)
+            .entity("Cannot process declaration without a successfully scanned Fitnote Image")
+            .build();
+      }
+
+      if (imagePayloadToSubmit.getNino() == null || imagePayloadToSubmit.getNino().isEmpty()) {
+        LOG.debug("REJECT :: no NINO specified for session {}", declaration.getSessionId());
+        return Response.status(HttpStatus.SC_BAD_REQUEST)
+            .entity("Cannot process declaration without a valid NINO")
+            .build();
+      }
+
+      if (imagePayloadToSubmit.getClaimantAddress() == null) {
+        LOG.debug(
+            "REJECT :: Claimant address has not been specified for session {}",
+            declaration.getSessionId());
+        return Response.status(HttpStatus.SC_BAD_REQUEST)
+            .entity("Address must be specified")
+            .build();
+      }
+
+      LOG.debug("Address on fitnote is supplied");
+      LOG.debug("Session Id {} is ok to process", declaration.getSessionId());
+      LOG.info("Post image payload directly to SNS topic '{}'", config.getSnsTopicName());
+      String transactionId = drsDispatchPayload(imagePayloadToSubmit);
+
+      LOG.info(
+          "Clear all data for session {} with correlation id '{}'",
+          declaration.getSessionId(),
+          transactionId);
+      imageStore.clearSession(declaration.getSessionId());
+
+      LOG.info("Successfully posted image data to SNS topic ({})", config.getSnsTopicName());
+      return Response.status(HttpStatus.SC_OK).build();
+
+    } catch (DeclarationException e) {
+      LOG.error("Declaration exception :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
+
+      return createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_RESPONSE);
+
+    } catch (CryptoException e) {
+      return createCrypto500Response(e, LOG);
+
+    } catch (ImagePayloadException e) {
+      return createImage500ErrorResponse(e, LOG);
+
+    } catch (EventsManagerException e) {
+      LOG.error("Publishing events manager exception :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
+
+      return createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_RESPONSE);
+
+    } catch (IOException e) {
+      LOG.error("Json payload builder exception :: {}", e.getMessage());
+      LOG.debug(e.getClass().getName(), e);
+
+      return createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_RESPONSE);
+    }
+  }
+
+  private String drsDispatchPayload(ImagePayload imagePayload)
+      throws IOException, EventsManagerException {
+    FitnoteMetadata drsMetadata = new FitnoteMetadata();
+    final ObjectMapper mapper = new ObjectMapper();
+
+    drsMetadata.setNino(imagePayload.getNinoObject());
+    drsMetadata.setBusinessUnitID("35");
+    drsMetadata.setDocumentType(8606);
+    drsMetadata.setClassification(1);
+    drsMetadata.setDocumentSource(4);
+    drsMetadata.setBenefitType(37);
+
+    if (imagePayload.getClaimantAddress() != null) {
+      drsMetadata.setPostCode(imagePayload.getClaimantAddress().getPostcode());
     }
 
-    public FitnoteDeclarationResource(ImageStorage imageStore,
-                                      JsonValidator jsonValidator,
-                                      MessagePublisher snsPublisher,
-                                      FitnoteControllerConfiguration config) {
-        this.jsonValidator = jsonValidator;
-        this.snsPublisher = snsPublisher;
-        this.imageStore = imageStore;
-        this.config = config;
+    if (imagePayload.getMobileNumber() != null
+        && !imagePayload.getMobileNumber().trim().isEmpty()) {
+      drsMetadata.setCustomerMobileNumber(imagePayload.getMobileNumber());
     }
 
-    @POST
-    @Path("/declaration")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response submitDeclaration(String jsonBody) {
-        try {
-            Declaration declaration = jsonValidator.validateAndTranslateDeclaration(jsonBody);
-            LOG.debug("Json validated correctly");
+    UUID correlationId = UUID.randomUUID();
 
-            if (!declaration.isAccepted()) {
-                LOG.info("Declaration was REJECTED by the user");
-                imageStore.clearSession(declaration.getSessionId());
-                return Response.status(HttpStatus.SC_OK).build();
-            }
+    MetaData metaData = new MetaData(Collections.singletonList(config.getSnsSubject()));
+    metaData.setRoutingKey(config.getSnsRoutingKey());
+    metaData.setCorrelationId(correlationId.toString());
 
-            LOG.info("Declaration ACCEPTED by the user");
-            ImagePayload imagePayloadToSubmit = imageStore.getPayload(declaration.getSessionId());
+    EventMessage messageQueueEvent = new EventMessage();
+    messageQueueEvent.setMetaData(metaData);
+    messageQueueEvent.setBodyContents(
+        mapper.readValue(
+            new DrsPayloadBuilder<ImagePayload, FitnoteMetadata>()
+                .getDrsPayloadJson(imagePayload, drsMetadata),
+            Object.class));
 
-            if (imagePayloadToSubmit.getImage() == null) {
-                LOG.debug("REJECT :: no image data to process for session {}", declaration.getSessionId());
-                return Response.status(HttpStatus.SC_BAD_REQUEST).entity("Cannot process declaration without a Fitnote Image").build();
-            }
+    try {
+      snsPublisher.publishMessageToSnsTopic(
+          config.isSnsEncryptMessages(),
+          config.getSnsTopicName(),
+          config.getSnsSubject(),
+          messageQueueEvent,
+          null);
 
-            if (!imagePayloadToSubmit.getFitnoteCheckStatus().equals(ImagePayload.Status.SUCCEEDED)) {
-                LOG.debug("REJECT :: the fitnote image was not scanned successfully for session {}", declaration.getSessionId());
-                return Response.status(HttpStatus.SC_BAD_REQUEST).entity("Cannot process declaration without a successfully scanned Fitnote Image").build();
-            }
+    } catch (NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | EventsMessageException
+        | CryptoException e) {
 
-            if ((imagePayloadToSubmit.getNino() == null) || (imagePayloadToSubmit.getNino().isEmpty())) {
-                LOG.debug("REJECT :: no NINO specified for session {}", declaration.getSessionId());
-                return Response.status(HttpStatus.SC_BAD_REQUEST).entity("Cannot process declaration without a valid NINO").build();
-            }
-
-            if (imagePayloadToSubmit.getClaimantAddress() == null) {
-                LOG.debug("REJECT :: Claimant address has not been specified for session {}", declaration.getSessionId());
-                return Response.status(HttpStatus.SC_BAD_REQUEST).entity("Address must be specified").build();
-            }
-
-            LOG.debug("Address on fitnote is supplied");
-            LOG.debug("Session Id {} is ok to process", declaration.getSessionId());
-            LOG.info("Post image payload directly to SNS topic '{}'", config.getSnsTopicName());
-            String transactionId = drsDispatchPayload(imagePayloadToSubmit);
-
-            LOG.info("Clear all data for session {} with correlation id '{}'", declaration.getSessionId(), transactionId);
-            imageStore.clearSession(declaration.getSessionId());
-
-            LOG.info("Successfully posted image data to SNS topic ({})", config.getSnsTopicName());
-            return Response.status(HttpStatus.SC_OK).build();
-
-        } catch (DeclarationException e) {
-            LOG.error("Declaration exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            return Response.status(HttpStatus.SC_BAD_REQUEST).entity(ERROR_MSG).build();
-
-        } catch (CryptoException e) {
-            LOG.error("CryptoException exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            return Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_MSG).build();
-
-        } catch (ImagePayloadException e) {
-            LOG.error("Image payload exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            return Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_MSG).build();
-
-        } catch (EventsManagerException e) {
-            LOG.error("Publishing events manager exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            return Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_MSG).build();
-
-        } catch (IOException e) {
-            LOG.error("Json payload builder exception :: {}", e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            return Response.status(HttpStatus.SC_INTERNAL_SERVER_ERROR).entity(ERROR_MSG).build();
-        }
+      throw new EventsManagerException(e.getMessage());
     }
 
-    private String drsDispatchPayload(ImagePayload imagePayload) throws IOException, EventsManagerException {
-        FitnoteMetadata drsMetadata = new FitnoteMetadata();
-        ObjectMapper mapper = new ObjectMapper();
-
-        drsMetadata.setNino(imagePayload.getNinoObject());
-        drsMetadata.setBusinessUnitID("35");
-        drsMetadata.setDocumentType(8606);
-        drsMetadata.setClassification(1);
-        drsMetadata.setDocumentSource(4);
-        drsMetadata.setBenefitType(37);
-
-        if (imagePayload.getClaimantAddress() != null) {
-            drsMetadata.setPostCode(imagePayload.getClaimantAddress().getPostcode());
-        }
-
-        if ((imagePayload.getMobileNumber() != null) && (!imagePayload.getMobileNumber().trim().isEmpty())) {
-            drsMetadata.setCustomerMobileNumber(imagePayload.getMobileNumber());
-        }
-
-        UUID correlationId = UUID.randomUUID();
-
-        MetaData metaData = new MetaData(Collections.singletonList(config.getSnsSubject()));
-        metaData.setRoutingKey(config.getSnsRoutingKey());
-        metaData.setCorrelationId(correlationId.toString());
-
-        EventMessage messageQueueEvent = new EventMessage();
-        messageQueueEvent.setMetaData(metaData);
-        messageQueueEvent.setBodyContents(mapper.readValue(new DrsPayloadBuilder<ImagePayload, FitnoteMetadata>().getDrsPayloadJson(imagePayload, drsMetadata), Object.class));
-
-        try {
-            snsPublisher.publishMessageToSnsTopic(config.isSnsEncryptMessages(), config.getSnsTopicName(), config.getSnsSubject(), messageQueueEvent, null);
-
-        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
-                InvocationTargetException | EventsMessageException | CryptoException e) {
-
-            LOG.error("Publishing error {} :: {}", e.getClass().getName(), e.getMessage());
-            LOG.debug(e.getClass().getName(), e);
-
-            throw new EventsManagerException(e.getMessage());
-        }
-
-        return correlationId.toString();
-    }
+    return correlationId.toString();
+  }
 }

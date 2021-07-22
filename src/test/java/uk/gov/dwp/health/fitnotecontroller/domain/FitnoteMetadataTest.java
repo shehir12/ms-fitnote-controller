@@ -8,6 +8,8 @@ import java.io.IOException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 public class FitnoteMetadataTest {
@@ -15,7 +17,15 @@ public class FitnoteMetadataTest {
 
     @Test
     public void classCanBeBuiltUsingSerialisedJson() throws IOException {
-        new ObjectMapper().readValue(EXPECTED_SERIALISED_CLASS, FitnoteMetadata.class);
+        FitnoteMetadata metadata = new ObjectMapper().readValue(EXPECTED_SERIALISED_CLASS, FitnoteMetadata.class);
+        assertNull(metadata.getBusinessUnitID());
+        assertEquals(0, metadata.getClassification());
+        assertEquals(0, metadata.getDocumentType());
+        assertEquals(0, metadata.getDocumentSource());
+        assertEquals("LS6 4PT", metadata.getPostCode());
+        assertNull(metadata.getNino());
+        assertEquals(99, metadata.getBenefitType());
+        assertEquals("0113 25678886", metadata.getCustomerMobileNumber());
     }
 
     @Test

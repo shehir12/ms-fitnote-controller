@@ -1,17 +1,16 @@
-package uk.gov.dwp.health.fitnotecontroller.cucumber;
+package uk.gov.dwp.health.fitnotecontroller.integration;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.sqs.model.Message;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import cucumber.api.java.After;
 import cucumber.api.java.Before;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import gherkin.deps.net.iharder.Base64;
+import io.lettuce.core.cluster.RedisClusterClient;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -22,7 +21,6 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.slf4j.Logger;
-import org.junit.Rule;
 import org.slf4j.LoggerFactory;
 import uk.gov.dwp.health.crypto.CryptoConfig;
 import uk.gov.dwp.health.crypto.CryptoDataManager;
@@ -36,15 +34,11 @@ import uk.gov.dwp.health.messageq.amazon.utils.AmazonQueueUtilities;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -53,16 +47,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("squid:S1192") // all string literals
 public class FitnoteCucumberSteps {
     private static final Logger LOG = LoggerFactory.getLogger(FitnoteCucumberSteps.class.getName());
-    private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 120000;
-
-    private static final String SPOOF_AWS_RESPONSE =
-            "{\n" +
-                    "  \"CiphertextBlob\": \"AQEDAHjRYf5WytIc0C857tFSnBaPn2F8DgfmThbJlGfR8P3WlwAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDEFogLqPWZconQhwHAIBEIA7d9AC7GeJJM34njQvg4Wf1d5sw0NIo1MrBqZa+YdhV8MrkBQPeac0ReRVNDt9qleAt+SHgIRF8P0H+7U=\",\n" +
-                    "  \"KeyId\": \"arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\n" +
-                    "  \"Plaintext\": \"VdzKNHGzUAzJeRBVY+uUmofUGGiDzyB3+i9fVkh3piw=\"\n" +
-                    "}";
+    private static final int IMAGE_STATUS_QUERY_TIMEOUT_MILLIS = 240000;
 
     private ObjectMapper mapper = new ObjectMapper();
     private AmazonQueueUtilities queueUtilities;
@@ -72,36 +60,34 @@ public class FitnoteCucumberSteps {
     private HttpClient httpClient;
     private HttpResponse response;
     private String jsonResponse;
+    private static final String LOCALSTACK_HOST = "http://localstack:4566";
 
-    @Rule
-    public WireMockRule awsKmsServiceMock = new WireMockRule(wireMockConfig().port(5678));
 
     @Before
     public void startServiceMocks() throws CryptoException {
+        String redisHost = "redis-cluster";
         regexFileExtension = Pattern.compile("\\.(\\w+)");
-
-        awsKmsServiceMock.stubFor(post(urlEqualTo("/"))
-                .willReturn(aResponse()
-                        .withBody(SPOOF_AWS_RESPONSE)
-                        .withStatus(200)
-                        .withHeader("x-amzn-RequestId", UUID.randomUUID().toString())
-                ));
 
         // create local properties to negate KMS from needing to access Metadata Service for IAM role privs
         System.setProperty("aws.accessKeyId", "this_is_my_system_property_key");
         System.setProperty("aws.secretKey", "abcd123456789");
 
+        LOG.info("Flushing redis contents : {}", RedisClusterClient.create("redis://" + redisHost + ":7000")
+            .connect()
+            .sync()
+            .flushall());
+
         AmazonConfigBase snsConfig = new AmazonConfigBase();
-        snsConfig.setEndpointOverride("http://localhost:4575");
-        snsConfig.setS3EndpointOverride("http://localhost:4572");
+        snsConfig.setEndpointOverride(LOCALSTACK_HOST);
+        snsConfig.setS3EndpointOverride(LOCALSTACK_HOST);
         snsConfig.setLargePayloadSupportEnabled(false);
         snsConfig.setPathStyleAccessEnabled(true);
         snsConfig.setS3BucketName("sns-bucket");
         snsConfig.setRegion(Regions.US_EAST_1);
 
         AmazonConfigBase sqsConfig = new AmazonConfigBase();
-        sqsConfig.setEndpointOverride("http://localhost:4576");
-        sqsConfig.setS3EndpointOverride("http://localhost:4572");
+        sqsConfig.setEndpointOverride(LOCALSTACK_HOST);
+        sqsConfig.setS3EndpointOverride(LOCALSTACK_HOST);
         sqsConfig.setLargePayloadSupportEnabled(false);
         sqsConfig.setPathStyleAccessEnabled(true);
         sqsConfig.setS3BucketName("sqs-bucket");
@@ -109,16 +95,9 @@ public class FitnoteCucumberSteps {
 
         queueUtilities = new AmazonQueueUtilities(sqsConfig, snsConfig);
 
-        CryptoConfig cryptoConfig = new CryptoConfig("test_request_id");
-        cryptoConfig.setKmsEndpointOverride("http://localhost:5678");
+        CryptoConfig cryptoConfig = new CryptoConfig("alias/test_request_id");
+        cryptoConfig.setKmsEndpointOverride(LOCALSTACK_HOST);
         awsKmsCryptoClass = new CryptoDataManager(cryptoConfig);
-
-        awsKmsServiceMock.start();
-    }
-
-    @After
-    public void stopServiceMocks() {
-        awsKmsServiceMock.stop();
     }
 
     @Given("^the http client is up$")
@@ -130,6 +109,11 @@ public class FitnoteCucumberSteps {
     public void hitServiceUrlWithSpecifiedJson(String url, Map<String, String> jsonValues) throws IOException {
         String jsonRequestBody = buildJsonBody(jsonValues);
         performHttpPostWithUriOf(url, jsonRequestBody);
+    }
+
+    @And("^I wait (\\d+) seconds to guarantee message delivery$")
+    public void iWait(int seconds) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(seconds);
     }
 
     @And("^I hit the service url \"([^\"]*)\" with session id \"([^\"]*)\" getting return status (\\d+) and finally containing the following json body$")
@@ -182,7 +166,13 @@ public class FitnoteCucumberSteps {
     @And("^I create a catch all subscription for queue name \"([^\"]*)\" binding to topic \"([^\"]*)\" with msg visibility timeout of (\\d+) seconds$")
     public void iCreateACatchAllSubscriptionForQueueNameBindingToExchange(String queueName, String topicName, int timeout) {
         queueUtilities.createQueue(queueName, timeout);
+        queueUtilities.purgeQueue(queueName);
         queueUtilities.subscribeQueueToTopic(queueName, topicName);
+    }
+
+    @And("^I clear all content for queue name \"([^\"]*)\"$")
+    public void clearQueueContents(String queueName){
+        queueUtilities.deleteQueue(queueName);
     }
 
     @And("^I wait (\\d+) seconds for the visibility timeout to expire$")

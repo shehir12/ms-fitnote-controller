@@ -17,7 +17,10 @@ import java.io.IOException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -58,7 +61,49 @@ public class FitnoteConfirmationResourceTest {
     }
 
     @Test
-    public void sendMobileToServiceRespondsWith200ForKnownSessionId() throws IOException, ImagePayloadException, CryptoException {
+    public void confirmFitnoteForceCryptoException() throws IOException, CryptoException, ImagePayloadException {
+        String sessionId = "123456";
+        String nino = "AA370773A";
+        String json = buildNinoJsonPayload(sessionId, nino);
+        ImagePayload newPayload = buildNinoPayload(sessionId, nino);
+
+        when(jsonValidator.validateAndTranslateConfirmation(json))
+            .thenReturn(newPayload);
+
+        doThrow(new CryptoException("CRYPTO"))
+            .when(imageStore)
+            .updateNinoDetails(newPayload);
+
+        Response response = resourceUnderTest.confirmFitnote(json);
+
+        assertEquals(500, response.getStatus());
+        assertEquals("Internal Server Error", response.getStatusInfo().getReasonPhrase());
+    }
+
+    @Test
+    public void confirmFitnoteForceIoException() throws ImagePayloadException, IOException, CryptoException {
+        String sessionId = "123456";
+        String nino = "AA370773A";
+        String json = buildNinoJsonPayload(sessionId, nino);
+        ImagePayload newPayload = buildNinoPayload(sessionId, nino);
+
+        when(jsonValidator.validateAndTranslateConfirmation(json))
+            .thenReturn(newPayload);
+
+        doThrow(new IOException("IO Exception"))
+            .when(imageStore)
+            .updateNinoDetails(newPayload);
+
+        Response response = resourceUnderTest.confirmFitnote(json);
+
+        assertEquals(500, response.getStatus());
+        assertEquals("Internal Server Error", response.getStatusInfo().getReasonPhrase());
+    }
+
+    @Test
+    public void sendMobileToServiceRespondsWith200ForKnownSessionId() throws IOException,
+        ImagePayloadException, CryptoException {
+
         String sessionId = "123456";
         String mobileNumber = "0113999999";
         String json = buildMobileJsonPayload(sessionId, mobileNumber);
@@ -74,6 +119,61 @@ public class FitnoteConfirmationResourceTest {
 
         verify(imageStore).updateMobileDetails(newPayload);
 
+    }
+
+    @Test
+    public void confirmMobileForceImagePayloadException() throws ImagePayloadException {
+        String sessionId = "123456";
+        String mobileNumber = "0113999999";
+        String json = buildMobileJsonPayload(sessionId, mobileNumber);
+
+        when(jsonValidator.validateAndTranslateMobileConfirmation(json))
+            .thenThrow(new ImagePayloadException("EXCEPTION"));
+
+        Response response = resourceUnderTest.confirmMobile(json);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Bad Request", response.getStatusInfo().getReasonPhrase());
+    }
+
+    @Test
+    public void confirmMobileForceCryptoException() throws ImagePayloadException, IOException, CryptoException {
+        String sessionId = "123456";
+        String mobileNumber = "0113999999";
+        String json = buildMobileJsonPayload(sessionId, mobileNumber);
+        ImagePayload newPayload = buildMobilePayload(sessionId, mobileNumber);
+
+        when(jsonValidator.validateAndTranslateMobileConfirmation(json))
+            .thenReturn(newPayload);
+
+        doThrow(new CryptoException("CRYPTO"))
+            .when(imageStore)
+            .updateMobileDetails(newPayload);
+
+        Response response = resourceUnderTest.confirmMobile(json);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Bad Request", response.getStatusInfo().getReasonPhrase());
+    }
+
+    @Test
+    public void confirmMobileForceIoException() throws ImagePayloadException, IOException, CryptoException {
+        String sessionId = "123456";
+        String mobileNumber = "0113999999";
+        String json = buildMobileJsonPayload(sessionId, mobileNumber);
+        ImagePayload newPayload = buildMobilePayload(sessionId, mobileNumber);
+
+        when(jsonValidator.validateAndTranslateMobileConfirmation(json))
+            .thenReturn(newPayload);
+
+        doThrow(new IOException("IO Exception"))
+            .when(imageStore)
+            .updateMobileDetails(newPayload);
+
+        Response response = resourceUnderTest.confirmMobile(json);
+
+        assertEquals(500, response.getStatus());
+        assertEquals("Internal Server Error", response.getStatusInfo().getReasonPhrase());
     }
 
     private ImagePayload buildMobilePayload(String sessionId, String mobileNumber) {

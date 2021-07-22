@@ -76,5 +76,5 @@ When the thread reports the **OutOfMemory** error it will set the status for the
 
 `$ curl -m 10 -XGET --noproxy '*' http://localhost:9100/imagestatus?sessionId=1234`
 
-    {"fitnoteStatus":"FAILED_ERROR", "barcodeStatus" : "CREATED"}
+    {"fitnoteStatus":"FAILED_ERROR"}
 

@@ -5,35 +5,35 @@ import com.fasterxml.jackson.annotation.JsonView;
 
 public class Address extends SessionItem {
 
-    @JsonView(Views.QueryAddressDetails.class)
-    @JsonProperty("houseNameOrNumber")
-    private String houseNameOrNumber;
+  @JsonView(Views.QueryAddressDetails.class)
+  @JsonProperty("houseNameOrNumber")
+  private String houseNameOrNumber;
 
-    @JsonView(Views.QueryAddressDetails.class)
-    @JsonProperty("street")
-    private String street;
+  @JsonView(Views.QueryAddressDetails.class)
+  @JsonProperty("street")
+  private String street;
 
-    @JsonView(Views.QueryAddressDetails.class)
-    @JsonProperty("city")
-    private String city;
+  @JsonView(Views.QueryAddressDetails.class)
+  @JsonProperty("city")
+  private String city;
 
-    @JsonView(Views.QueryAddressDetails.class)
-    @JsonProperty("postcode")
-    private String postcode;
+  @JsonView(Views.QueryAddressDetails.class)
+  @JsonProperty("postcode")
+  private String postcode;
 
-    public String getStreet() {
-        return street;
-    }
+  public String getStreet() {
+    return street;
+  }
 
-    public String getCity() {
-        return city;
-    }
+  public String getCity() {
+    return city;
+  }
 
-    public String getPostcode() {
-        return postcode;
-    }
+  public String getPostcode() {
+    return postcode;
+  }
 
-    public String getHouseNameOrNumber() {
-        return houseNameOrNumber;
-    }
+  public String getHouseNameOrNumber() {
+    return houseNameOrNumber;
+  }
 }

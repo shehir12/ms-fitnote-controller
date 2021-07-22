@@ -25,7 +25,12 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FitnoteAddressResourceTest {
-    private static final String VALID_ADDRESS = "{ \"sessionId\" :\"123456\", \"houseNameOrNumber\" : \"254\", \"street\" : \"Bakers Street\", \"city\": \"London\", \"postcode\" : \"NE12 9LG\"}";
+    private static final String VALID_ADDRESS =
+        "{ \"sessionId\" :\"123456\"," +
+        " \"houseNameOrNumber\" : \"254\", " +
+            "\"street\" : \"Street\", " +
+            "\"city\": \"City\", " +
+            "\"postcode\" : \"SW1A 1AA\"}";
     private static final String INVALID_ADDRESS = "{}";
     private static final String SESSION_ID = "123456";
 
@@ -80,8 +85,8 @@ public class FitnoteAddressResourceTest {
 
         Address newAddress = imageStorage.getPayload(SESSION_ID).getClaimantAddress();
         assertThat(newAddress.getHouseNameOrNumber(), is("254"));
-        assertThat(newAddress.getStreet(), is("Bakers Street"));
-        assertThat(newAddress.getCity(), is("London"));
-        assertThat(newAddress.getPostcode(), is("NE12 9LG"));
+        assertThat(newAddress.getStreet(), is("Street"));
+        assertThat(newAddress.getCity(), is("City"));
+        assertThat(newAddress.getPostcode(), is("SW1A 1AA"));
     }
 }

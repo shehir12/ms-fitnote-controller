@@ -6,48 +6,90 @@
 
     <groupId>uk.gov.dwp.health.fitnote</groupId>
     <artifactId>ms-fitnote-controller</artifactId>
-    <version>1.3.1</version>
+    <version>1.6.0</version>
 
     <properties>
         <dwp.message-utility.version>2.1.4</dwp.message-utility.version>
-        <dwp.secure-sockets.version>1.6.2</dwp.secure-sockets.version>
-        <dwp.securestrings.version>1.5.1</dwp.securestrings.version>
+        <dwp.secure-sockets.version>1.7.0</dwp.secure-sockets.version>
+        <dwp.securestrings.version>1.5.3</dwp.securestrings.version>
         <dwp.encoded-log.version>2.0.4</dwp.encoded-log.version>
         <dwp.postcode.version>1.1.0</dwp.postcode.version>
         <dwp.drsinteg.version>1.6.0</dwp.drsinteg.version>
-        <dwp.crypto.version>1.7.0</dwp.crypto.version>
+        <dwp.crypto.version>1.8.1</dwp.crypto.version>
         <dwp.nino.version>1.2.2</dwp.nino.version>
+        <dwp.vinfo.version>1.0.0-3c2add75</dwp.vinfo.version>
+
+        <plugin.projectinfo.version>2.4</plugin.projectinfo.version>
+        <plugin.pmd.version>3.10.0</plugin.pmd.version>
+        <plugin.spotbugs.version>4.0.0</plugin.spotbugs.version>
+        <plugin.surefire.version>3.0.0-M5</plugin.surefire.version>
+        <plugin.jacoco.version>0.8.2</plugin.jacoco.version>
+        <plugin.jxr.version>2.5</plugin.jxr.version>
+        <plugin.site.version>3.7.1</plugin.site.version>
+
+        <doxia.version>1.8</doxia.version>
+
+        <sl4j.version>2.13.3</sl4j.version>
+        <log4j.version>2.13.3</log4j.version>
+        <hibernate-validator.version>6.1.5.Final</hibernate-validator.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <lettuce-redis.version>5.2.0.RELEASE</lettuce-redis.version>
+        <lettuce-redis.version>6.0.1.RELEASE</lettuce-redis.version>
         <javax.activation.version>1.1.1</javax.activation.version>
-        <google-guava.version>25.0-jre</google-guava.version>
+        <google-guava.version>30.1-jre</google-guava.version>
         <cucumber-core.version>1.2.4</cucumber-core.version>
         <cucumber-jvm.version>1.0.3</cucumber-jvm.version>
-        <tesseract.version>4.0.0-1.4.4</tesseract.version>
+        <tesseract.version>4.1.1-1.5.5</tesseract.version>
         <junit-toolbox.version>2.4</junit-toolbox.version>
-        <jetty.version>9.4.17.v20190418</jetty.version>
-        <dropwizard.version>1.3.5</dropwizard.version>
-        <commons-io.version>1.3.2</commons-io.version>
+        <jetty.version>9.4.41.v20210516</jetty.version>
+        <dropwizard.version>2.0.15</dropwizard.version>
+        <snakeyml.version>1.27</snakeyml.version>
+        <commons-io.version>2.8.0</commons-io.version>
         <wiremock.version>2.6.0</wiremock.version>
         <mockito.version>2.24.5</mockito.version>
-        <jackson.version>2.10.0</jackson.version>
-        <pdfbox.version>2.0.13</pdfbox.version>
-        <owasp.version>4.0.2</owasp.version>
+        <jackson.version>2.11.0</jackson.version>
+        <pdfbox.version>2.0.24</pdfbox.version>
+        <jacoco.version>0.8.2</jacoco.version>
+        <owasp.version>6.0.2</owasp.version>
         <junit.version>4.11</junit.version>
         <zxing.version>2.2</zxing.version>
         <jaxb.version>2.3.0</jaxb.version>
+        <httpclient.version>4.5.13</httpclient.version>
+        <netty.version>4.1.65.Final</netty.version>
 
-        <localstack.version>0.1.15</localstack.version>
+        <log4j-over-sl4j.version>1.7.30</log4j-over-sl4j.version>
+
+        <org.testcontainers.version>1.12.3</org.testcontainers.version>
         <aws.sqs.version>1.11.458</aws.sqs.version>
         <aws.sns.version>1.11.458</aws.sns.version>
     </properties>
 
     <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${sl4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
         <dependency>
             <groupId>uk.gov.dwp.logging</groupId>
             <artifactId>encoded-logger-output</artifactId>
             <version>${dwp.encoded-log.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>uk.gov.dwp.health</groupId>
+            <artifactId>version-info-resources-java</artifactId>
+            <version>${dwp.vinfo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>${hibernate-validator.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -94,6 +136,17 @@
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-webapp</artifactId>
             <version>${jetty.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.jetty</groupId>
+                    <artifactId>jetty-security</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-security</artifactId>
+            <version>${jetty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
@@ -106,6 +159,11 @@
             <version>${dwp.securestrings.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyml.version}</version>
+        </dependency>
+        <dependency>
             <groupId>uk.gov.dwp.tls</groupId>
             <artifactId>secure-sockets</artifactId>
             <version>${dwp.secure-sockets.version}</version>
@@ -114,7 +172,16 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>${httpclient.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -123,7 +190,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.bytedeco.javacpp-presets</groupId>
+            <groupId>org.bytedeco</groupId>
             <artifactId>tesseract-platform</artifactId>
             <version>${tesseract.version}</version>
         </dependency>
@@ -178,15 +245,15 @@
             <version>${aws.sns.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-testing</artifactId>
-            <version>${dropwizard.version}</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${org.testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>cloud.localstack</groupId>
-            <artifactId>localstack-utils</artifactId>
-            <version>${localstack.version}</version>
+            <groupId>io.dropwizard</groupId>
+            <artifactId>dropwizard-testing</artifactId>
+            <version>${dropwizard.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -242,6 +309,57 @@
             <groupId>io.lettuce</groupId>
             <artifactId>lettuce-core</artifactId>
             <version>${lettuce-redis.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-transport</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-common</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-buffer</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-handler</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-resolver</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-common</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver</artifactId>
+            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.tomakehurst</groupId>
@@ -321,6 +439,33 @@
         </resources>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${plugin.surefire.version}</version>
+                <configuration>
+                    <argLine>${jacocoArgLine} -Xmx12g</argLine>
+                    <excludes>
+                        <exclude>**/integration/*</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${plugin.spotbugs.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs</artifactId>
+                        <version>${plugin.spotbugs.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+
+            <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>${owasp.version}</version>
@@ -337,66 +482,104 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>cobertura-maven-plugin</artifactId>
-                <version>2.7</version>
-                <configuration>
-                    <check></check>
-                    <formats>
-                        <format>xml</format>
-                    </formats>
-                </configuration>
-            </plugin>
+
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.7.5.201505241946</version>
+                <version>${plugin.jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>default-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <propertyName>jacocoArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-report</id>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- All classes must have 80% line and 75% branch coverage . Note we use 2 d.p so that we get can any check failure messages reported to 2 d.p  -->
+                                <rule>
+                                    <element>CLASS</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.75</minimum>
+                                        </limit>
+                                    </limits>
+                                    <excludes>
+                                        <exlude></exlude>
+                                        <!-- Image Storage excluded as it is covered in integration tests -->
+                                        <exclude>uk.gov.dwp.health.fitnotecontroller.ImageStorage</exclude>
+                                        <exclude>uk.gov.dwp.health.fitnotecontroller.exception.ImageHashException</exclude>
+                                        <exclude>uk.gov.dwp.health.fitnotecontroller.domain.Views</exclude>
+                                        <exclude>uk.gov.dwp.health.fitnotecontroller.application.*</exclude>
+                                    </excludes>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.2</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>1.6</version>
-                <configuration>
-                    <createDependencyReducedPom>true</createDependencyReducedPom>
-                    <filters>
-                        <filter>
-                            <artifact>*:*</artifact>
-                            <excludes>
-                                <exclude>META-INF/*.SF</exclude>
-                                <exclude>META-INF/*.DSA</exclude>
-                                <exclude>META-INF/*.RSA</exclude>
-                            </excludes>
-                        </filter>
-                    </filters>
-                </configuration>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>${plugin.site.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.doxia</groupId>
+                        <artifactId>doxia-module-markdown</artifactId>
+                        <version>${doxia.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.3.5.RELEASE</version>
                 <executions>
                     <execution>
-                        <phase>package</phase>
                         <goals>
-                            <goal>shade</goal>
+                            <goal>repackage</goal>
                         </goals>
                         <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerApplication</mainClass>
-                                </transformer>
-                            </transformers>
+                            <mainClass>uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerApplication
+                            </mainClass>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
+
 </project>
