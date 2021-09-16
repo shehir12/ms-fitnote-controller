@@ -6,7 +6,7 @@
 
     <groupId>uk.gov.dwp.health.fitnote</groupId>
     <artifactId>ms-fitnote-controller</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
 
     <properties>
         <dwp.message-utility.version>2.1.4</dwp.message-utility.version>
@@ -41,8 +41,8 @@
         <cucumber-jvm.version>1.0.3</cucumber-jvm.version>
         <tesseract.version>4.1.1-1.5.5</tesseract.version>
         <junit-toolbox.version>2.4</junit-toolbox.version>
-        <jetty.version>9.4.41.v20210516</jetty.version>
-        <dropwizard.version>2.0.15</dropwizard.version>
+        <jetty.version>9.4.43.v20210629</jetty.version>
+        <dropwizard.version>2.0.25</dropwizard.version>
         <snakeyml.version>1.27</snakeyml.version>
         <commons-io.version>2.8.0</commons-io.version>
         <wiremock.version>2.6.0</wiremock.version>

@@ -10,8 +10,8 @@ server:
 
 sessionExpiryTimeInSeconds: ${SESSION_EXPIRY_TIME_IN_SECONDS:-1800}
 
-imageReplayExpirySeconds: ${IMAGE_REPLAY_EXPIRY_SECONDS:-300}
-maxAllowedImageReplay: ${MAX_ALLOWED_IMAGE_REPLAY:-5}
+imageReplayExpirySeconds: ${IMAGE_REPLAY_EXPIRY_SECONDS:-50000}
+maxAllowedImageReplay: ${MAX_ALLOWED_IMAGE_REPLAY:-10000}
 imageHashSalt: ${IMAGE_HASH_SALT:-NoNeedForAPerEnvHash}
 
 redisStoreURI: ${REDIS_STORE_URI}

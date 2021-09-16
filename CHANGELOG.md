@@ -1,3 +1,15 @@
+<a name="1.7.0"></a>
+# 1.7.0 (2021-09-16)
+### Features
+
+* **config:** increase image replay expiry and max allowed image replays ([f962d738](https://gitlab.nonprod.dwpcloud.uk/health-pdu/fitnote/fitnote-controller/commit/f962d738)) 
+
+## Vulnerability Updates
+
+* **owasp:** update jetty from 9.4.41 to 9.4.43 ([f962d738](https://gitlab.nonprod.dwpcloud.uk/health-pdu/fitnote/fitnote-controller/commit/f962d738))
+* **owasp:** update dropwizard from 2.0.15 to 2.0.25 ([f962d738](https://gitlab.nonprod.dwpcloud.uk/health-pdu/fitnote/fitnote-controller/commit/f962d738)) 
+
+
 <a name="1.6.0"></a>
 # 1.6.0 (2021-07-08)
 
