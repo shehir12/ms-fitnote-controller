@@ -60,8 +60,8 @@
         <log4j-over-sl4j.version>1.7.30</log4j-over-sl4j.version>
 
         <org.testcontainers.version>1.12.3</org.testcontainers.version>
-        <aws.sqs.version>1.11.458</aws.sqs.version>
-        <aws.sns.version>1.11.458</aws.sns.version>
+        <aws.sqs.version>1.12.102</aws.sqs.version>
+        <aws.sns.version>1.12.102</aws.sns.version>
     </properties>
 
     <dependencies>
@@ -526,7 +526,7 @@
                                         </limit>
                                     </limits>
                                     <excludes>
-                                        <exlude></exlude>
+                                        <exlude/>
                                         <!-- Image Storage excluded as it is covered in integration tests -->
                                         <exclude>uk.gov.dwp.health.fitnotecontroller.ImageStorage</exclude>
                                         <exclude>uk.gov.dwp.health.fitnotecontroller.exception.ImageHashException</exclude>
