@@ -46,7 +46,7 @@ rejectingOversizeImages: ${REJECTING_OVERSIZE_IMAGES:-true}
 targetImageSizeKB: ${TARGET_IMAGE_SIZE_KB:-500}
 greyScale: ${GREY_SCALE:-true}
 
-pdfScanDPI: ${PDF_SCAN_DPI:-300}
+pdfScanDPI: ${PDF_SCAN_DPI:-72}
 scanTargetImageSize: ${SCAN_TARGET_IMAGE_SIZE:-1000}
 
 highTarget: ${HIGH_TARGET:-100}
