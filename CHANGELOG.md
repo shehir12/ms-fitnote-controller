@@ -1,3 +1,9 @@
+<a name="1.8.0"></a>
+# 1.8.0 (2022-04-21)
+## Vulnerability Updates
+
+* **owasp:** update messaging utility library to version 2.3.0 ([bf74cd9d](https://gitlab.com/dwp/health/fitnote/components/ms-fitnote-controller/commit/bf74cd9d))
+
 <a name="1.7.3"></a>
 # 1.7.3 (2022-01-13)
 ## Vulnerability Updates

@@ -6,17 +6,17 @@
 
     <groupId>uk.gov.dwp.health.fitnote</groupId>
     <artifactId>ms-fitnote-controller</artifactId>
-    <version>1.7.3</version>
+    <version>1.8.0</version>
 
     <properties>
-        <dwp.message-utility.version>2.1.4</dwp.message-utility.version>
-        <dwp.secure-sockets.version>1.7.0</dwp.secure-sockets.version>
-        <dwp.securestrings.version>1.5.3</dwp.securestrings.version>
-        <dwp.encoded-log.version>2.0.4</dwp.encoded-log.version>
+        <dwp.message-utility.version>2.3.0-5de751dd</dwp.message-utility.version>
+        <dwp.secure-sockets.version>1.8.0-ebebb8d5</dwp.secure-sockets.version>
+        <dwp.securestrings.version>1.6.0-6ce91523</dwp.securestrings.version>
+        <dwp.encoded-log.version>2.2.0-3321520b</dwp.encoded-log.version>
         <dwp.postcode.version>1.1.0</dwp.postcode.version>
         <dwp.drsinteg.version>1.6.0</dwp.drsinteg.version>
-        <dwp.crypto.version>1.8.1</dwp.crypto.version>
-        <dwp.nino.version>1.2.2</dwp.nino.version>
+        <dwp.crypto.version>2.4.0-9e3c09fb</dwp.crypto.version>
+        <dwp.nino.version>1.3.0</dwp.nino.version>
         <dwp.vinfo.version>1.0.0-3c2add75</dwp.vinfo.version>
 
         <plugin.projectinfo.version>2.4</plugin.projectinfo.version>
@@ -34,35 +34,29 @@
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lettuce-redis.version>6.0.1.RELEASE</lettuce-redis.version>
-        <javax.activation.version>1.1.1</javax.activation.version>
-        <google-guava.version>30.1-jre</google-guava.version>
         <cucumber-core.version>1.2.4</cucumber-core.version>
         <cucumber-jvm.version>1.0.3</cucumber-jvm.version>
         <tesseract.version>4.1.1-1.5.5</tesseract.version>
         <junit-toolbox.version>2.4</junit-toolbox.version>
-        <jetty.version>9.4.43.v20210629</jetty.version>
         <dropwizard.version>2.0.28</dropwizard.version>
-        <snakeyml.version>1.27</snakeyml.version>
-        <commons-io.version>2.8.0</commons-io.version>
+        <commons-io.version>2.11.0</commons-io.version>
         <wiremock.version>2.6.0</wiremock.version>
         <mockito.version>2.24.5</mockito.version>
-        <jackson.version>2.11.0</jackson.version>
+        <jackson.version>2.13.2.2</jackson.version>
         <pdfbox.version>2.0.24</pdfbox.version>
-        <jacoco.version>0.8.2</jacoco.version>
-        <owasp.version>6.0.2</owasp.version>
-        <junit.version>4.11</junit.version>
+        <owasp.version>7.0.1</owasp.version>
+        <junit.version>4.13.2</junit.version>
         <zxing.version>2.2</zxing.version>
-        <jaxb.version>2.3.0</jaxb.version>
-        <httpclient.version>4.5.13</httpclient.version>
         <netty.version>4.1.72.Final</netty.version>
-
-        <org.testcontainers.version>1.12.3</org.testcontainers.version>
-        <aws.sqs.version>1.11.458</aws.sqs.version>
-        <aws.sns.version>1.11.458</aws.sns.version>
+        <slf4j.version>1.7.35</slf4j.version>
     </properties>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -89,76 +83,14 @@
             <version>${hibernate-validator.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${google-guava.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>${jaxb.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-impl</artifactId>
-            <version>${jaxb.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jaxb</groupId>
-            <artifactId>jaxb-runtime</artifactId>
-            <version>${jaxb.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>javax.activation</groupId>
-            <artifactId>activation</artifactId>
-            <version>${javax.activation.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-xml</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-webapp</artifactId>
-            <version>${jetty.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.eclipse.jetty</groupId>
-                    <artifactId>jetty-security</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-security</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlets</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
             <groupId>uk.gov.dwp.crypto</groupId>
             <artifactId>secure-strings</artifactId>
             <version>${dwp.securestrings.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyml.version}</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>uk.gov.dwp.tls</groupId>
@@ -176,11 +108,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>${httpclient.version}</version>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
@@ -195,16 +122,6 @@
             <groupId>io.dropwizard</groupId>
             <artifactId>dropwizard-core</artifactId>
             <version>${dropwizard.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.glassfish.web</groupId>
-                    <artifactId>javax.el</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.el</groupId>
-                    <artifactId>javax.el-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.dropwizard</groupId>
@@ -230,22 +147,6 @@
             <groupId>uk.gov.dwp.regex</groupId>
             <artifactId>postcode-validation</artifactId>
             <version>${dwp.postcode.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-sqs</artifactId>
-            <version>${aws.sqs.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-sns</artifactId>
-            <version>${aws.sns.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <version>${org.testcontainers.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.dropwizard</groupId>

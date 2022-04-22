@@ -1,16 +1,19 @@
-version: '3.0'
+version: '2.1'
 networks:
   test:
 services:
 
   localstack:
     container_name: localstack
-    image: localstack/localstack-full:0.12.10
+    image: localstack/localstack:0.11.2
     environment:
       SERVICES: ${LOCALSTACK_SERVICES}
       HOSTNAME_EXTERNAL: ${LOCALSTACK_HOSTNAME}
-    expose:
-      - 4566
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     ports:
       - "4566:4566"
     networks:
@@ -21,25 +24,13 @@ services:
   redis-cluster:
     container_name: redis-cluster
     image: grokzen/redis-cluster:latest
-    expose:
-      - 7000
-      - 7001
-      - 7002
-      - 7003
-      - 7004
-      - 7005
     networks:
       - test
     ports:
-      - "7000:7000"
-      - "7001:7001"
-      - "7002:7002"
-      - "7003:7003"
-      - "7004:7004"
-      - "7005:7005"
+      - "7000-7007:7000-7007"
       - "8080:8080"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "redis-cli", "-p", "7000", "ping" ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -49,9 +40,8 @@ services:
     entrypoint: /bin/bash -c
     command:
       - |
-        until [ `curl -s http://localstack:4566/health | grep -o running | wc -l` = "$NUM_LOCALSTACK_SERVICES" ]; do echo "localstack services not available, sleeping 10."; sleep 10; done
-        sleep 10 #wait for keys to be created once localstack services are available (aws cli not available)
-        mvn clean -Dtest=uk.gov.dwp.health.fitnotecontroller.integration.*Test ${MVN_OPTS} ${MVN_CLI_OPTS} test
+        sleep 5 #wait for keys to be created once localstack services are available (aws cli not available)
+        mvn clean -Dtest=uk.gov.dwp.health.fitnotecontroller.integration.RunCukesTest ${MVN_OPTS} ${MVN_CLI_OPTS} test
     working_dir: /usr/src
     volumes:
       - .:/usr/src
@@ -63,5 +53,7 @@ services:
     networks:
       - test
     depends_on:
-      - redis-cluster
-      - localstack
+      redis-cluster:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy

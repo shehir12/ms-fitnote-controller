@@ -32,13 +32,17 @@ import uk.gov.dwp.health.messageq.amazon.items.messages.SnsMessageClassItem;
 import uk.gov.dwp.health.messageq.amazon.utils.AmazonQueueUtilities;
 
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -64,7 +68,8 @@ public class FitnoteCucumberSteps {
 
 
     @Before
-    public void startServiceMocks() throws CryptoException {
+    public void startServiceMocks() throws CryptoException, InvalidKeyException, IllegalBlockSizeException, 
+        NoSuchPaddingException, NoSuchAlgorithmException, IOException {
         String redisHost = "redis-cluster";
         regexFileExtension = Pattern.compile("\\.(\\w+)");
 
