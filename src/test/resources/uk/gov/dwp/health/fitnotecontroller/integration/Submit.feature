@@ -118,7 +118,10 @@ Feature: Fitnote submit
       | image     | /OcrTest-Replay.jpg |
       | sessionId | "568"             |
     And I receive a HTTP response of 202
-    Then I hit the service url "http://localhost:9101/photo" with the following json body
+    When I hit the service url "http://localhost:9101/photo" with the following json body
       | image     | /OcrTest-Replay.jpg |
       | sessionId | "569"             |
-    And I receive a HTTP response of 400
+    Then I receive a HTTP response of 202 with the following json body
+      | sessionId | "569"             |
+    And I hit the service url "http://localhost:9101/imagestatus" with session id "569" getting return status 200 and finally timing out trying to match the following body
+      | fitnoteStatus | FAILED_IMG_MAX_REPLAY |

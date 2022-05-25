@@ -94,14 +94,16 @@ public class ImageStorage {
     }
   }
 
-  public void updateImageHashStore(String sourceImage) throws ImageHashException {
-    if (sourceImage == null) {
+  public void updateImageHashStore(ImagePayload incomingPayload) throws ImageHashException,
+      ImagePayloadException, CryptoException {
+    if (incomingPayload.getImage() == null) {
       throw new ImageHashException("Null sourceImage rejected");
     }
     if (configuration.getImageHashSalt() == null) {
       throw new ImageHashException("Salt cannot be null");
     }
 
+    String sourceImage = incomingPayload.getImage();
     try {
       MessageDigest hash = MessageDigest.getInstance("SHA-256");
       hash.update(configuration.getImageHashSalt().getBytes(StandardCharsets.UTF_8));
@@ -139,6 +141,11 @@ public class ImageStorage {
                 + "Potential DDOS replay, aborting submission",
             hashStoreItem.getSubmissionCount(),
             hashStoreItem.getCreateDateTime());
+
+        ImagePayload storedPayload = getPayload(incomingPayload.getSessionId());
+        storedPayload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_MAX_REPLAY);
+        updateImageDetails(storedPayload);
+
         throw new ImageHashException("Image replay limited exceeded, rejecting");
       }
 

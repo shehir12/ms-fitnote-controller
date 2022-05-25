@@ -7,4 +7,28 @@
         <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc\-fips@.*$</packageUrl>
         <cve>CVE-2020-26939</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: amqp-client-5.0.0.jar - vulnerability has not been addressed by maintainer
+   ]]></notes>
+        <cve>CVE-2018-11087</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-fips-1.0.2.jar - vulnerability has not been addressed by maintainer
+   ]]></notes>
+        <cve>CVE-2020-15522</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-dataformat-cbor-2.6.7.jar - vulnerability has not been addressed by maintainer
+   ]]></notes>
+        <cve>CVE-2020-28491</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jersey-common-2.33.jar - vulnerability has not been addressed by maintainer
+   ]]></notes>
+        <cve>CVE-2021-28168</cve>
+    </suppress>
 </suppressions>

@@ -1,3 +1,10 @@
+<a name="1.9.0"></a>
+# 1.9.0 (2022-05-25)
+## Features
+
+* **feat:** add error message for too many identical submissions ([45656737](https://gitlab.com/dwp/health/fitnote/components/ms-fitnote-controller/commit/45656737))
+
+
 <a name="1.8.0"></a>
 # 1.8.0 (2022-04-21)
 ## Vulnerability Updates

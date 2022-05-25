@@ -107,7 +107,7 @@ public class FitnoteSubmitResource extends AbstractResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Path("/photo")
   public Response submitFitnote(String json) {
-    ImagePayload incomingPayload;
+    ImagePayload incomingPayload = null;
     Response response;
     try {
 
@@ -115,7 +115,7 @@ public class FitnoteSubmitResource extends AbstractResource {
           Runtime.getRuntime(), controllerConfiguration.getEstimatedRequestMemoryMb())) {
         incomingPayload =
             jsonValidator.validateAndTranslateSubmission(json.replaceAll(LOG_STANDARD_REGEX, ""));
-        imageStore.updateImageHashStore(incomingPayload.getImage());
+        imageStore.updateImageHashStore(incomingPayload);
 
         ImagePayload storedPayload = imageStore.getPayload(incomingPayload.getSessionId());
         storedPayload.setFitnoteCheckStatus(incomingPayload.getFitnoteCheckStatus());
@@ -132,19 +132,33 @@ public class FitnoteSubmitResource extends AbstractResource {
         response = createResponseOf(HttpStatus.SC_SERVICE_UNAVAILABLE, ERROR_RESPONSE);
       }
 
-    } catch (ImagePayloadException | ImageHashException | CryptoException e) {
-      response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_RESPONSE);
-      formatAndLogError(e.getClass().getName(), e.getMessage());
-      LOG.debug(ERROR_RESPONSE, e);
+    }  catch (ImageHashException e) {
+      response = createResponseOf(HttpStatus.SC_ACCEPTED, incomingPayload);
+      LOG.error("ImageHashException :: {}", e.getMessage());
     } catch (IOException e) {
       response = createResponseOf(HttpStatus.SC_INTERNAL_SERVER_ERROR, ERROR_RESPONSE);
       LOG.error("IOException :: {}", e.getMessage());
       LOG.debug(ERROR_RESPONSE, e);
+    } catch (ImagePayloadException | CryptoException e) {
+      response = createResponseOf(HttpStatus.SC_BAD_REQUEST, ERROR_RESPONSE);
+      formatAndLogError(e.getClass().getName(), e.getMessage());
+      LOG.debug(ERROR_RESPONSE, e);
     }
+
     LOG.debug("Completed /photo, send back status {}", response.getStatusInfo().getStatusCode());
     return response;
   }
 
+  private Response createResponseOf(int status, ImagePayload incomingPayload) {
+    Response response = null;
+    try {
+      response = createResponseOf(
+        status, createSessionOnlyResponseFrom(incomingPayload));
+    } catch (JsonProcessingException ex) {
+      LOG.error("JsonProcessingException :: {}", ex.getMessage());
+    }
+    return response;
+  }
 
   private void formatAndLogError(String className, String message) {
     LOG.error("{} {}", className, message);

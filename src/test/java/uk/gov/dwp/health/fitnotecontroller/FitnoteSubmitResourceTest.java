@@ -3,26 +3,31 @@ package uk.gov.dwp.health.fitnotecontroller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.googlecode.junittoolbox.PollingWait;
 import com.googlecode.junittoolbox.RunnableAssert;
+import gherkin.deps.net.iharder.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.util.EntityUtils;
+import org.hamcrest.MatcherAssert;
+import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 import uk.gov.dwp.health.crypto.exception.CryptoException;
 import uk.gov.dwp.health.fitnotecontroller.application.FitnoteControllerConfiguration;
 import uk.gov.dwp.health.fitnotecontroller.domain.ExpectedFitnoteFormat;
 import uk.gov.dwp.health.fitnotecontroller.domain.ImagePayload;
 import uk.gov.dwp.health.fitnotecontroller.domain.StatusItem;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImageCompressException;
+import uk.gov.dwp.health.fitnotecontroller.exception.ImageHashException;
 import uk.gov.dwp.health.fitnotecontroller.exception.ImagePayloadException;
 import uk.gov.dwp.health.fitnotecontroller.utils.ImageCompressor;
 import uk.gov.dwp.health.fitnotecontroller.utils.JsonValidator;
 import uk.gov.dwp.health.fitnotecontroller.utils.MemoryChecker;
-import gherkin.deps.net.iharder.Base64;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 import uk.gov.dwp.health.fitnotecontroller.utils.OcrChecker;
 
+import javax.sound.midi.SysexMessage;
 import javax.ws.rs.core.Response;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -31,23 +36,15 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.http.HttpStatus.SC_ACCEPTED;
-import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
-import static org.apache.http.HttpStatus.SC_OK;
-import static org.apache.http.HttpStatus.SC_SERVICE_UNAVAILABLE;
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 @SuppressWarnings({"squid:S1192", "squid:S3008", "squid:S00116"})
@@ -126,6 +123,17 @@ public class FitnoteSubmitResourceTest {
   public void checkFitnoteCallFailsWhenNoSessionIdParameterExists() throws ImagePayloadException, IOException, CryptoException {
     Response response = resourceUnderTest.checkFitnote(MISSING_SESSION_ID);
     assertThat(response.getStatus(), is(equalTo(SC_BAD_REQUEST)));
+  }
+
+  @Test
+  public void checkFitnoteCallWhenImageStoreThrowsException() throws ImagePayloadException, IOException, CryptoException {
+   ImagePayload imagePayload = new ImagePayload();
+   imagePayload.setFitnoteCheckStatus(ImagePayload.Status.FAILED_IMG_MAX_REPLAY);
+    when(imageStorage.getPayload(anyString())).thenReturn(imagePayload);
+    Response response = resourceUnderTest.checkFitnote(UNKNOWN_SESSION_ID);
+    assertThat(response.getStatus(), is(equalTo(SC_OK)));
+    String responseBody = (String) response.getEntity();
+    assertThat(responseBody, is(equalTo("{\"fitnoteStatus\":\"FAILED_IMG_MAX_REPLAY\"}")));
   }
 
   @Test
@@ -228,11 +236,44 @@ public class FitnoteSubmitResourceTest {
   }
 
   @Test
-  public void invalidJsonReturns400() throws ImagePayloadException {
+  public void invalidJsonReturns400ImagePayloadException() throws CryptoException, ImagePayloadException, IOException {
     String json = "invalidJson";
-    when(validator.validateAndTranslateSubmission(json)).thenThrow(new ImagePayloadException("Thrown for test purposes"));
+    ImagePayload imagePayload = new ImagePayload();
+    imagePayload.setSessionId("12");
+    imagePayload.setFitnoteCheckStatus(ImagePayload.Status.CREATED);
+    imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
+    when(validator.validateAndTranslateSubmission(anyString())).thenReturn(imagePayload);
+    when(imageStorage.getPayload("12")).thenThrow(new ImagePayloadException(""));
     Response response = resourceUnderTest.submitFitnote(json);
     assertThat(response.getStatus(), is(equalTo(SC_BAD_REQUEST)));
+    verifyNoMoreInteractions(ocrChecker);
+  }
+
+  @Test
+  public void invalidJsonReturns400CryptoException() throws CryptoException, ImagePayloadException, IOException {
+    String json = "invalidJson";
+    ImagePayload imagePayload = new ImagePayload();
+    imagePayload.setSessionId("12");
+    imagePayload.setFitnoteCheckStatus(ImagePayload.Status.CREATED);
+    imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
+    when(validator.validateAndTranslateSubmission(anyString())).thenReturn(imagePayload);
+    when(imageStorage.getPayload("12")).thenThrow(new CryptoException(""));
+    Response response = resourceUnderTest.submitFitnote(json);
+    assertThat(response.getStatus(), is(equalTo(SC_BAD_REQUEST)));
+    verifyNoMoreInteractions(ocrChecker);
+  }
+
+  @Test
+  public void invalidJsonReturns500IOException() throws CryptoException, ImagePayloadException, IOException {
+    String json = "invalidJson";
+    ImagePayload imagePayload = new ImagePayload();
+    imagePayload.setSessionId("12");
+    imagePayload.setFitnoteCheckStatus(ImagePayload.Status.CREATED);
+    imagePayload.setImage(LANDSCAPE_FITNOTE_IMAGE);
+    when(validator.validateAndTranslateSubmission(anyString())).thenReturn(imagePayload);
+    when(imageStorage.getPayload("12")).thenThrow(new IOException(""));
+    Response response = resourceUnderTest.submitFitnote(json);
+    assertThat(response.getStatus(), is(equalTo(SC_INTERNAL_SERVER_ERROR)));
     verifyNoMoreInteractions(ocrChecker);
   }
 
@@ -307,7 +348,19 @@ public class FitnoteSubmitResourceTest {
     examineImageStatusResponseForValueOrTimeout("FAILED_ERROR");
   }
 
-  private void examineImageStatusResponseForValueOrTimeout(String expectedStatus) throws InterruptedException {
+  @Test
+  public void imageHashExceptionReturnsOk() throws ImageHashException, IOException, ImagePayloadException, CryptoException {
+    ImagePayload imagePayload = imageStorage.getPayload(SESSION);
+    imagePayload.setImage(Base64.encodeBytes(COMPRESSED_PAGE_LARGE));
+    when(validator.validateAndTranslateSubmission(any(String.class))).thenReturn(imagePayload);
+    doThrow(new ImageHashException("")).when(imageStorage).updateImageHashStore(imagePayload);
+    Response response = resourceUnderTest.submitFitnote(PORTRAIT_JSON);
+    assertThat(response.getStatus(), is(equalTo(SC_ACCEPTED)));
+    String entity = (String) response.getEntity();
+    assertThat(entity, is(equalTo("{\"sessionId\":\"session1\"}")));
+  }
+
+    private void examineImageStatusResponseForValueOrTimeout(String expectedStatus) throws InterruptedException {
     TimeUnit.SECONDS.sleep(1); // pause before first execution to allow for async processes to begin/end
     PollingWait wait = new PollingWait().timeoutAfter(59, SECONDS).pollEvery(1, SECONDS);
 

@@ -31,6 +31,8 @@ import uk.gov.dwp.health.messageq.amazon.items.AmazonConfigBase;
 import uk.gov.dwp.health.messageq.amazon.items.messages.SnsMessageClassItem;
 import uk.gov.dwp.health.messageq.amazon.utils.AmazonQueueUtilities;
 
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -40,16 +42,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("squid:S1192") // all string literals
 public class FitnoteCucumberSteps {
@@ -121,6 +118,7 @@ public class FitnoteCucumberSteps {
         TimeUnit.SECONDS.sleep(seconds);
     }
 
+
     @And("^I hit the service url \"([^\"]*)\" with session id \"([^\"]*)\" getting return status (\\d+) and finally containing the following json body$")
     public void iHitTheServiceUrlWithSessionIdGettingReturnStatusAndFinallyContainingTheFollowingJsonBody(String url, String sessionId, int status, Map<String, String> expectedValues) throws IOException, InterruptedException {
         String fullUrl = String.format("%s?sessionId=%s", url, sessionId);
@@ -161,6 +159,16 @@ public class FitnoteCucumberSteps {
     public void checkHTTPResponseStatusCode(int expectedStatusCode) {
         int actualStatusCode = response.getStatusLine().getStatusCode();
         assertThat(actualStatusCode, is(expectedStatusCode));
+    }
+
+    @Then("^I receive a HTTP response of (\\d+) with the following json body$")
+    public void iReceiveAHTTPResponseOfWithFollowingJsonBody(int expectedStatusCode,
+                                                             Map<String, String> jsonValues)
+      throws IOException {
+        String expectedJsonResponseBody = buildJsonBody(jsonValues);
+        int actualStatusCode = response.getStatusLine().getStatusCode();
+        assertThat(actualStatusCode, is(expectedStatusCode));
+        assertThat(jsonResponse, is(equalTo(expectedJsonResponseBody)));
     }
 
     @And("^I create a sns topic named \"([^\"]*)\"$")

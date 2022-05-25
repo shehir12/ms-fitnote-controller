@@ -381,36 +381,43 @@ public class ImageStorageTest {
   }
 
   @Test(expected = ImageHashException.class)
-  public void testNullSubmissionFails() throws ImageHashException {
+  public void testNullSubmissionFails() throws ImageHashException, ImagePayloadException, CryptoException {
     instance.updateImageHashStore(null);
   }
 
   @Test
   @SuppressWarnings({"squid:S2699"}) // allow string literals and non-standard variable names for clarity
   public void testHashGetsExpiredInsteadOfReplayLimit()
-      throws ImageHashException, InterruptedException {
+    throws ImageHashException, ImagePayloadException, CryptoException, InterruptedException {
     ImageStorage localInstance = new ImageStorage(configuration, redisClient, cryptoDataManager);
     String input = "i-am-an-image";
 
-    localInstance.updateImageHashStore(input);
-    localInstance.updateImageHashStore(input);
+    ImagePayload incomingPayload = new ImagePayload();
+    incomingPayload.setImage(input);
+
+    localInstance.updateImageHashStore(incomingPayload);
+    localInstance.updateImageHashStore(incomingPayload);
 
     TimeUnit.MILLISECONDS.sleep((configuration.getImageReplayExpirySeconds() * 1000) + 3000);
 
-    localInstance.updateImageHashStore(input);
+    localInstance.updateImageHashStore(incomingPayload);
 
   }
 
   @Test(expected = ImageHashException.class)
-  public void testExceptionForNullSalt() throws ImageHashException {
+  public void testExceptionForNullSalt() throws ImageHashException, ImagePayloadException, CryptoException {
     when(configuration.getImageHashSalt()).thenReturn(null);
-    instance.updateImageHashStore("i-am-an-iage");
+    ImagePayload incomingPayload = new ImagePayload();
+    incomingPayload.setImage("i-am-an-iage");
+    instance.updateImageHashStore(incomingPayload);
   }
 
   @Test(expected = ImageHashException.class)
-  public void testHashLimitsIsReached() throws ImageHashException {
-    instance.updateImageHashStore("i-am-an-image");
-    instance.updateImageHashStore("i-am-an-image");
-    instance.updateImageHashStore("i-am-an-image");
+  public void testHashLimitsIsReached() throws ImageHashException, ImagePayloadException, CryptoException {
+    ImagePayload incomingPayload = new ImagePayload();
+    incomingPayload.setImage("i-am-an-image");
+    instance.updateImageHashStore(incomingPayload);
+    instance.updateImageHashStore(incomingPayload);
+    instance.updateImageHashStore(incomingPayload);
   }
 }

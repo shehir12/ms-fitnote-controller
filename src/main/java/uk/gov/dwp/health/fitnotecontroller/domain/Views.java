@@ -8,4 +8,7 @@ public class Views {
   public interface QueryNinoDetails {}
 
   public interface SessionOnly {}
+
+  public interface FitnoteStatus {}
+
 }

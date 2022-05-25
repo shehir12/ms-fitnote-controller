@@ -6,7 +6,7 @@
 
     <groupId>uk.gov.dwp.health.fitnote</groupId>
     <artifactId>ms-fitnote-controller</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.0</version>
 
     <properties>
         <dwp.message-utility.version>2.3.0-5de751dd</dwp.message-utility.version>
@@ -47,7 +47,7 @@
         <owasp.version>7.0.1</owasp.version>
         <junit.version>4.13.2</junit.version>
         <zxing.version>2.2</zxing.version>
-        <netty.version>4.1.72.Final</netty.version>
+        <netty.version>4.1.77.Final</netty.version>
         <slf4j.version>1.7.35</slf4j.version>
     </properties>
 

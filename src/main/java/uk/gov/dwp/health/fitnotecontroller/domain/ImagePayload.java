@@ -29,6 +29,7 @@ public class ImagePayload {
     FAILED_IMG_OCR,
     FAILED_IMG_OCR_PARTIAL,
     PASS_IMG_OCR,
+    FAILED_IMG_MAX_REPLAY,
     SUCCEEDED,
     FAILED_ERROR
   }
@@ -52,6 +53,8 @@ public class ImagePayload {
   @JsonView(Views.QueryMobileDetails.class)
   private String mobileNumber;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.FitnoteStatus.class)
   private Status fitnoteCheckStatus;
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
